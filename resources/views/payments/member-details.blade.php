@@ -128,9 +128,11 @@
           <a href="{{ route('payments.top-ups') }}?member_id={{ $member->id }}" class="btn btn-success">
             <i class="icon-base ri ri-add-line me-1"></i>Top Up Balance
           </a>
+          @if(auth()->user()->role === 'admin')
           <button class="btn btn-primary" onclick="adjustBalance({{ $member->id }}, '{{ $member->name }}', {{ $member->balance }})">
             <i class="icon-base ri ri-edit-line me-1"></i>Adjust Balance
           </button>
+          @endif
           <a href="{{ route('payments.members.transactions.pdf', $member->id) }}" class="btn btn-outline-primary" target="_blank">
             <i class="icon-base ri ri-file-download-line me-1"></i>Download Transactions PDF
           </a>

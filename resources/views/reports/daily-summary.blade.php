@@ -192,6 +192,7 @@
     </div>
   </div>
 
+  @if(auth()->user()->role !== 'storekeeper')
   {{-- Food & Beverage --}}
   <div class="col-md-6 col-lg-4">
     <div class="card service-card h-100">
@@ -217,7 +218,9 @@
       </div>
     </div>
   </div>
+  @endif
 
+  @if(auth()->user()->role !== 'storekeeper')
   {{-- Top-ups --}}
   <div class="col-md-6 col-lg-4">
     <div class="card service-card h-100">
@@ -243,6 +246,7 @@
       </div>
     </div>
   </div>
+  @endif
 
   {{-- Equipment Rental --}}
   <div class="col-md-6 col-lg-4">
@@ -343,6 +347,7 @@
     </div>
   </div>
 
+  @if(auth()->user()->role !== 'storekeeper')
   <div class="col-sm-6 col-md-3">
     <div class="metric-card-clean py-2 border-start border-success border-4" style="color:#28A745;">
       <div class="metric-icon-circle" style="background:rgba(40,167,69,0.05); color:inherit; width:40px; height:40px; font-size:1.2rem; transition: all 0.3s;">
@@ -354,6 +359,7 @@
       </div>
     </div>
   </div>
+  @endif
 
   <div class="col-sm-6 col-md-3">
     <div class="metric-card-clean py-2 border-start border-warning border-4" style="color:#FFC107;">

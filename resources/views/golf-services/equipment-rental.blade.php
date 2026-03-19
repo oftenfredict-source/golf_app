@@ -82,8 +82,8 @@
                 <span>Active Rentals</span>
                 <strong>{{ $statActive }}</strong>
               </div>
-              <div class="progress" style="height: 6px;">
-                <div class="progress-bar bg-white" style="width: 70%"></div>
+              <div class="progress" style="height: 6px; background-color: rgba(255,255,255,0.2);">
+                <div class="progress-bar bg-white" style="width: {{ $activePct }}%"></div>
               </div>
             </div>
             <div class="mb-4">
@@ -91,8 +91,8 @@
                 <span>Under Maintenance</span>
                 <strong>{{ $statMaint }}</strong>
               </div>
-              <div class="progress" style="height: 6px;">
-                <div class="progress-bar bg-warning" style="width: 30%"></div>
+              <div class="progress" style="height: 6px; background-color: rgba(255,255,255,0.2);">
+                <div class="progress-bar bg-warning" style="width: {{ $maintPct }}%"></div>
               </div>
             </div>
             <div class="pt-2">
@@ -109,124 +109,14 @@
   </div>
 </div>
 
+
 {{-- ============================================================ --}}
-{{-- PRIMARY ACTIONS: New Rental Form (col-8) + Active Rentals (col-4) --}}
+{{-- PRIMARY ACTIONS: Active Rentals + Quick Stats --}}
 {{-- ============================================================ --}}
 <div class="row mb-6">
 
-  {{-- New Rental Form (col-8) --}}
+  {{-- Active Rentals Panel (col-8) --}}
   <div class="col-md-8">
-    <div class="card border-0 shadow-sm h-100">
-      <div class="card-header bg-transparent border-bottom py-3">
-        <h5 class="mb-0 fw-bold text-primary"><i class="ri ri-send-plane-fill me-2"></i>Issue New Rental</h5>
-      </div>
-      <div class="card-body">
-        <form id="newRentalForm">
-          @csrf
-          <div class="row">
-
-            {{-- Left half: Member search --}}
-            <div class="col-md-6">
-              <div class="mb-4 position-relative">
-                <label class="form-label fw-bold">1. Find Member</label>
-                <div class="input-group input-group-lg border rounded shadow-sm">
-                  <span class="input-group-text bg-white border-0"><i class="ri ri-search-2-line text-muted"></i></span>
-                  <input type="text" class="form-control border-0 px-1" id="rental_customer_search"
-                         placeholder="Search by name or card #..." autocomplete="off">
-                </div>
-                <div id="rentalCustomerSuggestions" class="list-group position-absolute w-100 shadow-lg border-0 mt-1"
-                     style="z-index:1000; display:none; max-height:260px; overflow-y:auto; border-radius:0 0 12px 12px;"></div>
-                <input type="hidden" id="rental_member_id" name="member_id">
-              </div>
-
-              {{-- Member info card --}}
-              <div class="card bg-label-primary border-0 mb-4" id="memberBalanceAlert" style="display:none;">
-                <div class="card-body p-3">
-                  <div class="d-flex align-items-center">
-                    <div class="avatar avatar-md me-3">
-                      <span class="avatar-initial rounded bg-primary"><i class="ri ri-user-star-line"></i></span>
-                    </div>
-                    <div class="flex-grow-1">
-                      <h6 class="mb-0 fw-bold" id="rentalMemberName">-</h6>
-                      <small class="text-primary" id="rentalMemberCard">-</small>
-                    </div>
-                    <div class="text-end">
-                      <small class="text-muted d-block">Balance</small>
-                      <h6 class="mb-0 fw-bold text-success" id="memberBalanceDisplay" data-balance="0">TZS 0</h6>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div class="form-floating form-floating-outline">
-                <textarea class="form-control" id="rental_notes" name="notes" style="height:70px" placeholder="Additional details"></textarea>
-                <label>Internal Notes (Optional)</label>
-              </div>
-            </div>
-
-            {{-- Right half: Equipment + type + dates --}}
-            <div class="col-md-6 border-start">
-              <label class="form-label fw-bold">2. Select Equipment &amp; Plan</label>
-              <select class="form-select form-select-lg mb-3" id="rental_equipment" name="equipment_id" required>
-                <option value="">Select Equipment...</option>
-                @foreach($equipment ?? [] as $eq)
-                <option value="{{ $eq->id }}" data-hourly="{{ $eq->rental_hourly_rate }}" data-daily="{{ $eq->rental_daily_rate }}" data-available="{{ $eq->available_quantity }}">
-                  {{ $eq->name }} ({{ $eq->available_quantity }} available)
-                </option>
-                @endforeach
-              </select>
-
-              <div class="row g-2 mb-3">
-                <div class="col-4">
-                  <div class="form-floating form-floating-outline">
-                    <input type="number" class="form-control fw-bold" id="rental_quantity" name="quantity" value="1" min="1" required>
-                    <label>Qty</label>
-                  </div>
-                </div>
-                <div class="col-8">
-                  <div class="form-floating form-floating-outline">
-                    <select class="form-select fw-bold text-primary" id="rental_type" name="rental_type" required>
-                      <option value="hourly">HOURLY (Short Term)</option>
-                      <option value="daily" selected>DAILY (Full Session)</option>
-                    </select>
-                    <label>Rate Plan</label>
-                  </div>
-                </div>
-              </div>
-
-              <div class="form-floating form-floating-outline mb-3">
-                <input type="datetime-local" class="form-control" id="rental_expected_return" name="expected_return" required>
-                <label>Expected Return</label>
-              </div>
-
-              {{-- Cost preview --}}
-              <div class="p-3 bg-label-info rounded-3" id="rentalCostPreview">
-                <div class="d-flex justify-content-between align-items-center">
-                  <div>
-                    <h6 class="mb-1 fw-bold">Estimated Cost</h6>
-                    <small id="selectedRateLabel" class="text-muted fw-bold d-block">Select equipment first</small>
-                  </div>
-                  <div class="text-end">
-                    <h3 class="mb-0 fw-bold text-primary" id="estimatedCost">TZS -</h3>
-                    <small class="text-muted">Payable on return</small>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="mt-4">
-            <button type="button" class="btn btn-primary btn-lg w-100 py-3 shadow-sm fw-bold" onclick="submitRental()">
-              <i class="ri ri-check-line me-2"></i> CONFIRM &amp; CREATE RENTAL
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-
-  {{-- Active Rentals Panel (col-4) --}}
-  <div class="col-md-4">
     <div class="card border-0 shadow-sm h-100">
       <div class="card-header bg-transparent border-bottom py-3 d-flex justify-content-between align-items-center">
         <h5 class="mb-0 fw-bold text-success">
@@ -275,6 +165,172 @@
       </div>
     </div>
   </div>
+
+  {{-- Quick Actions / Sidebar (col-4) --}}
+  <div class="col-md-4">
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-body p-4 text-center">
+        <div class="avatar avatar-lg mx-auto mb-3">
+          <span class="avatar-initial rounded-circle bg-label-primary"><i class="ri ri-add-line ri-2x"></i></span>
+        </div>
+        <h5 class="fw-bold mb-2">New Equipment Rental</h5>
+        <p class="text-muted small mb-4">Quickly issue equipment to members or guests for hourly or daily sessions.</p>
+        <button class="btn btn-primary w-100 py-3 fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#newRentalModal">
+           <i class="ri ri-send-plane-fill me-2"></i> START NEW RENTAL
+        </button>
+      </div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-transparent border-bottom py-3">
+        <h6 class="mb-0 fw-bold"><i class="ri ri-information-line me-2 text-info"></i>Rental Guidelines</h6>
+      </div>
+      <div class="card-body p-4">
+        <ul class="list-unstyled mb-0">
+          <li class="d-flex mb-3">
+            <i class="ri ri-checkbox-circle-fill text-success me-2 mt-1"></i>
+            <small>Late returns are automatically calculated based on system rates.</small>
+          </li>
+          <li class="d-flex mb-3">
+            <i class="ri ri-checkbox-circle-fill text-success me-2 mt-1"></i>
+            <small>Security deposits are held until equipment is verified intact.</small>
+          </li>
+          <li class="d-flex">
+            <i class="ri ri-checkbox-circle-fill text-success me-2 mt-1"></i>
+            <small>Ensure all items are inspected for damage upon return.</small>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+{{-- New Rental Modal --}}
+<div class="modal fade" id="newRentalModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-fullscreen-md-down">
+    <div class="modal-content shadow-lg border-0">
+      <div class="modal-header bg-label-primary p-4">
+        <h5 class="modal-title fw-bold text-primary"><i class="ri ri-add-line me-2"></i>Issue New Equipment Rental</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form id="newRentalForm">
+          @csrf
+          <div class="row">
+            {{-- Left half: Member search --}}
+            <div class="col-md-6">
+              <div class="mb-4 position-relative">
+                <label class="form-label fw-bold">1. Find Member</label>
+                <div class="input-group input-group-lg border rounded shadow-sm">
+                  <span class="input-group-text bg-white border-0"><i class="ri ri-search-2-line text-muted"></i></span>
+                  <input type="text" class="form-control border-0 px-1" id="rental_customer_search"
+                         placeholder="Search by name or card #..." autocomplete="off">
+                </div>
+                <div id="rentalCustomerSuggestions" class="list-group position-absolute w-100 shadow-lg border-0 mt-1"
+                     style="z-index:1000; display:none; max-height:260px; overflow-y:auto; border-radius:0 0 12px 12px;"></div>
+                <input type="hidden" id="rental_member_id" name="member_id">
+              </div>
+
+              {{-- Member info card --}}
+              <div class="card bg-label-primary border-0 mb-4" id="memberBalanceAlert" style="display:none;">
+                <div class="card-body p-3">
+                  <div class="d-flex align-items-center">
+                    <div class="avatar avatar-md me-3">
+                      <span class="avatar-initial rounded bg-primary"><i class="ri ri-user-star-line"></i></span>
+                    </div>
+                    <div class="flex-grow-1">
+                      <h6 class="mb-0 fw-bold" id="rentalMemberName">-</h6>
+                      <small class="text-primary" id="rentalMemberCard">-</small>
+                    </div>
+                    <div class="text-end">
+                      <small class="text-muted d-block">Balance</small>
+                      <h6 class="mb-0 fw-bold text-success" id="memberBalanceDisplay" data-balance="0">TZS 0</h6>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-floating form-floating-outline">
+                <textarea class="form-control" id="rental_notes" name="notes" style="height:70px" placeholder="Additional details"></textarea>
+                <label>Internal Notes (Optional)</label>
+              </div>
+            </div>
+
+            {{-- Right half: Equipment + type + dates --}}
+            <div class="col-md-6 border-md-start">
+              <label class="form-label fw-bold mt-4 mt-md-0">2. Select Equipment & Plan</label>
+              <select class="form-select form-select-lg mb-3" id="rental_equipment" name="equipment_id" required>
+                <option value="">Select Equipment...</option>
+                @foreach($equipment ?? [] as $eq)
+                <option value="{{ $eq->id }}" data-hourly="{{ $eq->rental_hourly_rate }}" data-daily="{{ $eq->rental_daily_rate }}" data-available="{{ $eq->available_quantity }}">
+                  {{ $eq->name }} ({{ $eq->available_quantity }} available)
+                </option>
+                @endforeach
+              </select>
+
+              <div class="row g-2 mb-3">
+                <div class="col-4">
+                  <div class="form-floating form-floating-outline">
+                    <input type="number" class="form-control fw-bold" id="rental_quantity" name="quantity" value="1" min="1" required>
+                    <label>Qty</label>
+                  </div>
+                </div>
+                <div class="col-8">
+                  <div class="form-floating form-floating-outline">
+                    <select class="form-select fw-bold text-primary" id="rental_type" name="rental_type" required>
+                      <option value="hourly" selected>HOURLY (Short Term)</option>
+                      <option value="daily">DAILY (Full Session)</option>
+                    </select>
+                    <label>Rate Plan</label>
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-floating form-floating-outline mb-3">
+                <input type="number" class="form-control fw-bold" id="rental_duration" name="duration" value="1" min="1" required>
+                <label id="duration_label">Duration (Hours)</label>
+              </div>
+
+              <div class="form-floating form-floating-outline mb-3 d-none">
+                <input type="datetime-local" class="form-control" id="rental_expected_return" name="expected_return" required>
+                <label>Expected Return</label>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label fw-bold">3. Payment Method</label>
+                <select class="form-select" id="rental_payment_method" name="payment_method" required>
+                  <option value="cash" selected>CASH</option>
+                  <option value="mobile_money">MOBILE MONEY</option>
+                  <option value="balance">MEMBER BALANCE</option>
+                  <option value="card">CARD (POS)</option>
+                </select>
+              </div>
+
+              {{-- Cost preview --}}
+              <div class="p-3 bg-label-info rounded-3" id="rentalCostPreview">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <h6 class="mb-1 fw-bold">Estimated Cost</h6>
+                    <small id="selectedRateLabel" class="text-muted fw-bold d-block">Select equipment first</small>
+                  </div>
+                  <div class="text-end">
+                    <h3 class="mb-0 fw-bold text-primary" id="estimatedCost">TZS -</h3>
+                    <small class="text-muted">Payable on return</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer border-0 p-4 pt-0">
+        <button type="button" class="btn btn-outline-secondary btn-lg" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary btn-lg px-5 shadow-sm fw-bold" onclick="submitRental()">
+          <i class="ri ri-check-line me-2"></i> CONFIRM RENTAL
+        </button>
+      </div>
+    </div>
+  </div>
 </div>
 
 {{-- ============================================================ --}}
@@ -290,7 +346,7 @@
         </button>
       </div>
       <div class="card-body p-0">
-        <div class="table-responsive">
+        <div class="table-responsive text-nowrap">
           <table class="table table-hover align-middle mb-0">
             <thead class="table-light">
               <tr>
@@ -511,6 +567,15 @@
 .hover-bg-light:hover { background-color: #f8f9fa; }
 @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
 .animate-pulse { animation: pulse 2s cubic-bezier(0.4,0,0.6,1) infinite; }
+
+@media (max-width: 767.98px) {
+    .border-md-start {
+        border-left: none !important;
+        border-top: 1px solid rgba(0,0,0,0.05);
+        padding-top: 2rem;
+        margin-top: 1rem;
+    }
+}
 </style>
 @endpush
 @endsection
@@ -574,6 +639,23 @@ rentalSearchInput?.addEventListener('input', function() {
           balEl.textContent = 'TZS ' + parseFloat(m.balance).toLocaleString();
           balEl.dataset.balance = m.balance;
           document.getElementById('memberBalanceAlert').style.display = 'block';
+          
+          // User Rule: Cardholders (has_full_access=1) MUST pay by balance.
+          // Custom/Walk-in members can pay by cash but NOT balance.
+          const paymentMethodSelect = document.getElementById('rental_payment_method');
+          const isCardholder = m.has_full_access == 1 || m.has_full_access === true;
+          
+          Array.from(paymentMethodSelect.options).forEach(opt => {
+            if (isCardholder) {
+              // Cardholders: only balance allowed
+              opt.disabled = (opt.value !== 'balance');
+            } else {
+              // Custom/Walk-in: balance not allowed
+              opt.disabled = (opt.value === 'balance');
+            }
+          });
+          paymentMethodSelect.value = isCardholder ? 'balance' : 'cash';
+
           updateCostPreview();
         };
         rentalSuggestions.appendChild(div);
@@ -598,15 +680,55 @@ function updateCostPreview() {
   const qty = parseInt(document.getElementById('rental_quantity').value) || 1;
   const opt = eqSelect.options[eqSelect.selectedIndex];
   const balance = parseFloat(document.getElementById('memberBalanceDisplay').dataset.balance) || 0;
+  const expectedReturnStr = document.getElementById('rental_expected_return').value;
 
   if (opt?.value) {
     const rate = type === 'hourly' ? parseFloat(opt.dataset.hourly) : parseFloat(opt.dataset.daily);
-    const cost = rate * qty;
+    
+    // Update duration label based on type
+    const durationLabelEl = document.getElementById('duration_label');
+    if (durationLabelEl) {
+      durationLabelEl.textContent = type === 'hourly' ? 'Duration (Hours)' : 'Duration (Days)';
+    }
+
+    const duration = parseInt(document.getElementById('rental_duration').value) || 1;
+    
+    const expectedInput = document.getElementById('rental_expected_return');
+    if (expectedInput) {
+      const now = new Date();
+      if (type === 'hourly') {
+        now.setHours(now.getHours() + duration);
+      } else {
+        now.setDate(now.getDate() + duration);
+      }
+      
+      // Format to local ISO string (YYYY-MM-DDTHH:mm)
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      expectedInput.value = `${year}-${month}-${day}T${hours}:${minutes}`;
+    }
+
+    const cost = rate * qty * duration;
     const available = parseInt(opt.dataset.available) || 0;
-    document.getElementById('selectedRateLabel').textContent = `Rate: TZS ${rate.toLocaleString()} per ${type}`;
+    
+    const durationLabel = type === 'hourly' ? (duration + ' Hour' + (duration > 1 ? 's' : '')) : (duration + ' Day' + (duration > 1 ? 's' : ''));
+    document.getElementById('selectedRateLabel').innerHTML = `Rate: TZS ${rate.toLocaleString()} / ${type}<br><span class="text-primary">Duration: ${durationLabel}</span>`;
+    
     document.getElementById('estimatedCost').textContent = 'TZS ' + cost.toLocaleString();
     const preview = document.getElementById('rentalCostPreview');
-    preview.className = 'p-3 rounded-3 ' + (balance > 0 && balance < cost ? 'bg-label-danger' : available < qty ? 'bg-label-warning' : 'bg-label-info');
+    const paymentMethod = document.getElementById('rental_payment_method').value;
+    
+    let previewClass = 'bg-label-info';
+    if (paymentMethod === 'balance' && balance < cost) {
+      previewClass = 'bg-label-danger';
+    } else if (available < qty) {
+      previewClass = 'bg-label-warning';
+    }
+    
+    preview.className = 'p-3 rounded-3 ' + previewClass;
   } else {
     document.getElementById('selectedRateLabel').textContent = 'Select equipment first';
     document.getElementById('estimatedCost').textContent = 'TZS -';
@@ -617,6 +739,8 @@ function updateCostPreview() {
 document.getElementById('rental_equipment')?.addEventListener('change', updateCostPreview);
 document.getElementById('rental_type')?.addEventListener('change', updateCostPreview);
 document.getElementById('rental_quantity')?.addEventListener('input', updateCostPreview);
+document.getElementById('rental_duration')?.addEventListener('input', updateCostPreview);
+document.getElementById('rental_payment_method')?.addEventListener('change', updateCostPreview);
 
 // ============================================================
 // Submit rental
@@ -627,6 +751,7 @@ function submitRental() {
   const quantity = document.getElementById('rental_quantity').value;
   const rentalType = document.getElementById('rental_type').value;
   const expectedReturn = document.getElementById('rental_expected_return').value;
+  const paymentMethod = document.getElementById('rental_payment_method').value;
 
   if (!memberId || !equipmentId || !expectedReturn) { showError('Please search for a member and select equipment.'); return; }
 
@@ -638,7 +763,15 @@ function submitRental() {
   fetch('{{ route("golf-services.equipment-rental.store") }}', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' },
-    body: JSON.stringify({ member_id: memberId, equipment_id: equipmentId, quantity, rental_type: rentalType, expected_return: expectedReturn, notes: document.getElementById('rental_notes').value })
+    body: JSON.stringify({ 
+      member_id: memberId, 
+      equipment_id: equipmentId, 
+      quantity, 
+      rental_type: rentalType, 
+      expected_return: expectedReturn, 
+      payment_method: paymentMethod,
+      notes: document.getElementById('rental_notes').value 
+    })
   })
   .then(r => r.json())
   .then(data => {

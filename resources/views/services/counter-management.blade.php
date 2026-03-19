@@ -94,11 +94,11 @@
           <table class="table table-hover">
             <thead>
               <tr>
-                <th>Counter Name</th>
+                <th>Station Name</th>
                 <th>Location</th>
-                <th>Type</th>
+                <th>Duty Category</th>
                 <th>Tier</th>
-                <th>Assigned To</th>
+                <th>Staff On Duty</th>
                 <th>Status</th>
                 <th>Actions</th>
               </tr>
@@ -108,7 +108,14 @@
               <tr>
                 <td><strong>{{ $counter->name }}</strong></td>
                 <td>{{ $counter->location ?? '-' }}</td>
-                <td><span class="badge bg-label-info">{{ ucfirst($counter->type) }}</span></td>
+                <td>
+                  <span class="badge bg-label-info">{{ ucfirst($counter->type) }}</span>
+                  @if($counter->is_alcohol)
+                    <span class="badge bg-label-danger ms-1" title="Alcoholic Drinks Duty"><i class="ri ri-goblet-line"></i> Alcohol Duty</span>
+                  @else
+                    <span class="badge bg-label-success ms-1" title="Non-Alcoholic Drinks Duty"><i class="ri ri-cup-line"></i> Soft Drinks Only</span>
+                  @endif
+                </td>
                 <td>
                   @if($counter->tier === 'vip')
                     <span class="badge bg-label-warning text-warning border border-warning">
@@ -128,11 +135,11 @@
                 </td>
                 <td>
                   <div class="d-flex gap-2">
-                    <button class="btn btn-sm btn-label-primary" onclick="editCounter({{ $counter->id }}, '{{ $counter->name }}', '{{ $counter->location ?? '' }}', '{{ $counter->type }}', '{{ $counter->tier ?? 'normal' }}', {{ $counter->is_active ? 'true' : 'false' }})">
+                    <button class="btn btn-sm btn-label-primary" onclick="editCounter({{ $counter->id }}, '{{ $counter->name }}', '{{ $counter->location ?? '' }}', '{{ $counter->type }}', '{{ $counter->tier ?? 'normal' }}', {{ $counter->is_active ? 'true' : 'false' }}, {{ $counter->is_alcohol ? 'true' : 'false' }}, {{ $counter->assigned_user_id ?? 'null' }})">
                       <i class="icon-base ri ri-pencil-line me-1"></i>Edit
                     </button>
                     <button class="btn btn-sm btn-label-info" onclick="assignUser({{ $counter->id }}, '{{ $counter->name }}', {{ $counter->assigned_user_id ?? 'null' }})">
-                      <i class="icon-base ri ri-user-add-line me-1"></i>Assign
+                      <i class="icon-base ri ri-user-settings-line me-1"></i>Assign Duty
                     </button>
                     <button class="btn btn-sm btn-label-danger" onclick="deleteCounter({{ $counter->id }}, '{{ $counter->name }}')">
                       <i class="icon-base ri ri-delete-bin-line me-1"></i>Delete
@@ -157,46 +164,78 @@
 <div class="modal fade" id="addCounterModal" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content">
-      <div class="modal-header" style="background: linear-gradient(135deg, #940000 0%, #b30000 100%); color: white;">
-        <h5 class="modal-title text-white" id="counterModalTitle">Add Counter</h5>
+      <div class="modal-header" style="background: linear-gradient(135deg, #0d6efd 0%, #004085 100%); color: white;">
+        <h5 class="modal-title text-white" id="counterModalTitle"><i class="ri ri-store-3-line me-2"></i>Register Duty Station</h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
       <form id="addCounterForm">
         @csrf
         <input type="hidden" id="counter_id" name="counter_id" />
         <div class="modal-body">
-          <div class="form-floating form-floating-outline mb-4">
-            <input type="text" class="form-control" id="counter_name" name="name" required />
-            <label>Counter Name *</label>
-          </div>
-          <div class="form-floating form-floating-outline mb-4">
-            <input type="text" class="form-control" id="counter_location" name="location" />
-            <label>Location</label>
-          </div>
-          <div class="form-floating form-floating-outline mb-4">
-            <select class="form-select" id="counter_type" name="type" required>
-              <option value="food">Food</option>
-              <option value="beverage">Beverage</option>
-              <option value="equipment">Equipment</option>
-              <option value="general">General</option>
-            </select>
-            <label>Type *</label>
-          </div>
-          <div class="form-floating form-floating-outline mb-4">
-            <select class="form-select" id="counter_tier" name="tier">
-              <option value="normal">Normal (Standard Tables)</option>
-              <option value="vip">VIP (Premium Tables)</option>
-            </select>
-            <label>Tier</label>
-          </div>
-          <div class="form-check form-switch mb-4">
-            <input type="checkbox" class="form-check-input" id="counter_is_active" name="is_active" checked />
-            <label class="form-check-label" for="counter_is_active">Active</label>
+          <div class="row g-4">
+            <div class="col-12">
+              <div class="form-floating form-floating-outline">
+                <input type="text" class="form-control" id="counter_name" name="name" placeholder="e.g. Main Bar" required />
+                <label>Station / Point Name *</label>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-floating form-floating-outline">
+                <select class="form-select" id="counter_type" name="type" required>
+                  <option value="beverage">Beverage</option>
+                  <option value="food">Food / Kitchen</option>
+                  <option value="equipment">Equipment</option>
+                  <option value="general">General Service</option>
+                </select>
+                <label>Service Type *</label>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-floating form-floating-outline">
+                <select class="form-select" id="counter_tier" name="tier">
+                  <option value="normal">Standard (Normal)</option>
+                  <option value="vip">Premium (VIP)</option>
+                </select>
+                <label>Service Tier</label>
+              </div>
+            </div>
+            <div class="col-12">
+              <div class="form-floating form-floating-outline">
+                <select class="form-select" id="counter_assigned_user_id" name="assigned_user_id">
+                  <option value="">-- No Staff Assigned Yet --</option>
+                  @foreach(\App\Models\User::whereIn('role', ['counter', 'admin', 'manager'])->orderBy('role')->orderBy('name')->get() as $user)
+                    <option value="{{ $user->id }}">{{ $user->name }} ({{ ucfirst($user->role) }})</option>
+                  @endforeach
+                </select>
+                <label>Current Staff On Duty</label>
+                <div class="form-text text-primary small mt-1"><i class="ri ri-information-line me-1"></i>Only registered staff appear here.</div>
+              </div>
+            </div>
+            <div class="col-12">
+              <div class="form-floating form-floating-outline">
+                <input type="text" class="form-control" id="counter_location" name="location" placeholder="e.g. Ground Floor, North" />
+                <label>Physical Location</label>
+              </div>
+            </div>
+            <div class="col-12 mt-2">
+              <div class="d-flex align-items-center gap-4 p-3 rounded bg-light border">
+                <div class="form-check form-switch mb-0">
+                  <input type="checkbox" class="form-check-input" id="counter_is_active" name="is_active" checked />
+                  <label class="form-check-label fw-bold" for="counter_is_active">Station Active</label>
+                </div>
+                <div class="form-check form-switch mb-0">
+                  <input type="checkbox" class="form-check-input" id="counter_is_alcohol" name="is_alcohol" />
+                  <label class="form-check-label fw-bold" for="counter_is_alcohol">Permit Alcoholic Drinks</label>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-        <div class="modal-footer">
+        <div class="modal-footer border-0 pt-0">
           <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-primary" id="counterSubmitBtn">Add Counter</button>
+          <button type="submit" class="btn btn-primary px-4" id="counterSubmitBtn">
+            <i class="ri ri-save-line me-1"></i> Register Station
+          </button>
         </div>
       </form>
     </div>
@@ -207,28 +246,28 @@
 <div class="modal fade" id="assignUserModal" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Assign User to Counter</h5>
+      <div class="modal-header bg-label-info">
+        <h5 class="modal-title">Staff Duty Assignment</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <form id="assignUserForm">
         @csrf
         <input type="hidden" id="assign_counter_id" name="counter_id" />
         <div class="modal-body">
-          <p class="mb-3">Assigning user to: <strong id="assign_counter_name"></strong></p>
+          <p class="mb-3">Assigning staff to duty at station: <strong id="assign_counter_name"></strong></p>
           <div class="form-floating form-floating-outline mb-4">
             <select class="form-select" id="assign_user_id" name="user_id">
-              <option value="">-- Select User --</option>
-              @foreach(\App\Models\User::all() as $user)
-              <option value="{{ $user->id }}">{{ $user->name }} ({{ $user->email }})</option>
+              <option value="">-- Remove Assignment --</option>
+              @foreach(\App\Models\User::where('role', 'counter')->orWhere('role', 'admin')->get() as $user)
+              <option value="{{ $user->id }}">{{ $user->name }} ({{ $user->role }})</option>
               @endforeach
             </select>
-            <label>Select User</label>
+            <label>Select Staff Member</label>
           </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-primary">Assign User</button>
+          <button type="submit" class="btn btn-primary">Save Duty Assignment</button>
         </div>
       </form>
     </div>
@@ -248,8 +287,10 @@ document.getElementById('addCounterForm')?.addEventListener('submit', function(e
     : '{{ route("services.counters.store") }}';
   const method = counterId ? 'PUT' : 'POST';
   
-  // Add is_active checkbox value
+  // Add checkbox and select values
   formData.set('is_active', document.getElementById('counter_is_active').checked ? '1' : '0');
+  formData.set('is_alcohol', document.getElementById('counter_is_alcohol').checked ? '1' : '0');
+  formData.set('assigned_user_id', document.getElementById('counter_assigned_user_id').value);
   
   fetch(url, {
     method: method,
@@ -277,15 +318,17 @@ document.getElementById('addCounterForm')?.addEventListener('submit', function(e
 });
 
 // Edit Counter
-function editCounter(id, name, location, type, tier, isActive) {
+function editCounter(id, name, location, type, tier, isActive, isAlcohol, assignedUserId) {
   document.getElementById('counter_id').value = id;
   document.getElementById('counter_name').value = name;
   document.getElementById('counter_location').value = location || '';
   document.getElementById('counter_type').value = type;
   document.getElementById('counter_tier').value = tier || 'normal';
   document.getElementById('counter_is_active').checked = isActive;
-  document.getElementById('counterModalTitle').textContent = 'Edit Counter';
-  document.getElementById('counterSubmitBtn').textContent = 'Update Counter';
+  document.getElementById('counter_is_alcohol').checked = isAlcohol;
+  document.getElementById('counter_assigned_user_id').value = assignedUserId || '';
+  document.getElementById('counterModalTitle').innerHTML = '<i class="ri ri-edit-line me-2"></i>Edit Duty Station';
+  document.getElementById('counterSubmitBtn').innerHTML = '<i class="ri ri-save-line me-1"></i> Update Station';
   new bootstrap.Modal(document.getElementById('addCounterModal')).show();
 }
 
@@ -381,9 +424,11 @@ function deleteCounter(id, name) {
 document.getElementById('addCounterModal')?.addEventListener('hidden.bs.modal', function() {
   document.getElementById('addCounterForm').reset();
   document.getElementById('counter_id').value = '';
-  document.getElementById('counterModalTitle').textContent = 'Add Counter';
-  document.getElementById('counterSubmitBtn').textContent = 'Add Counter';
+  document.getElementById('counterModalTitle').innerHTML = '<i class="ri ri-store-3-line me-2"></i>Register Duty Station';
+  document.getElementById('counterSubmitBtn').innerHTML = '<i class="ri ri-save-line me-1"></i> Register Station';
   document.getElementById('counter_is_active').checked = true;
+  document.getElementById('counter_is_alcohol').checked = false;
+  document.getElementById('counter_assigned_user_id').value = '';
 });
 </script>
 @endpush

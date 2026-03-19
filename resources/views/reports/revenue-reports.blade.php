@@ -126,9 +126,11 @@
     'driving_range'    => ['label' => 'Driving Range',    'icon' => 'ri-golf-ball-line',     'color' => '#0d6efd', 'bg' => '#e7f0ff'],
     'equipment_rental' => ['label' => 'Equipment Rental', 'icon' => 'ri-tools-line',          'color' => '#17a2b8', 'bg' => '#e0f7fa'],
     'equipment_sales'  => ['label' => 'Equipment Sales',  'icon' => 'ri-shopping-bag-line',   'color' => '#fd7e14', 'bg' => '#fff3e0'],
-    'food_beverage'    => ['label' => 'Food & Beverage',  'icon' => 'ri-restaurant-line',     'color' => '#28a745', 'bg' => '#e8f5e9'],
     'ball_management'  => ['label' => 'Ball Management',  'icon' => 'ri-basketball-line',     'color' => '#6f42c1', 'bg' => '#ede7f6'],
   ];
+  if(auth()->user()->role !== 'storekeeper') {
+    $cats['food_beverage'] = ['label' => 'Food & Beverage',  'icon' => 'ri-restaurant-line',     'color' => '#28a745', 'bg' => '#e8f5e9'];
+  }
 
   $topCategory = 'N/A'; $topAmount = 0;
   foreach($revenueByCategory as $k => $v) {
@@ -298,6 +300,7 @@
     ];
   @endphp
   @foreach($pmethods as $key => $pm)
+  @if(auth()->user()->role === 'storekeeper' && $key === 'balance') @continue @endif
   <div class="col-md-3 col-6">
     <div class="card h-100 shadow-none border-0" style="background:#f1f3f5; border-radius:12px;">
       <div class="card-body py-3 px-3">
@@ -446,16 +449,28 @@ if (categoryCtx) {
   new Chart(categoryCtx, {
     type: 'doughnut',
     data: {
-      labels: ['Driving Range', 'Equipment Rental', 'Equipment Sales', 'Food & Beverage', 'Ball Management'],
+      labels: [
+        'Driving Range', 
+        'Equipment Rental', 
+        'Equipment Sales', 
+        @if(auth()->user()->role !== 'storekeeper') 'Food & Beverage', @endif
+        'Ball Management'
+      ],
       datasets: [{
         data: [
           {{ $revenueByCategory['driving_range']    ?? 0 }},
           {{ $revenueByCategory['equipment_rental'] ?? 0 }},
           {{ $revenueByCategory['equipment_sales']  ?? 0 }},
-          {{ $revenueByCategory['food_beverage']    ?? 0 }},
+          @if(auth()->user()->role !== 'storekeeper') {{ $revenueByCategory['food_beverage']    ?? 0 }}, @endif
           {{ $revenueByCategory['ball_management']  ?? 0 }}
         ],
-        backgroundColor: ['#0d6efd','#17a2b8','#fd7e14','#28a745','#6f42c1'],
+        backgroundColor: [
+          '#0d6efd',
+          '#17a2b8',
+          '#fd7e14',
+          @if(auth()->user()->role !== 'storekeeper') '#28a745', @endif
+          '#6f42c1'
+        ],
         borderWidth: 2,
         borderColor: '#fff',
         hoverOffset: 12

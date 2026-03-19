@@ -17,14 +17,19 @@
           <div class="col-md-8 p-4">
             <div class="d-flex justify-content-between align-items-center mb-3">
               <h5 class="mb-0 fw-bold"><i class="ri ri-inbox-archive-line me-2 text-primary"></i>Live Ball Inventory</h5>
-              <div class="dropdown">
-                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                  Inventory Maintenance
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end">
-                  <li><a class="dropdown-item" href="javascript:void(0);" data-bs-toggle="modal" data-bs-target="#maintenanceModal" data-tab="addStock"><i class="ri ri-add-line me-2"></i>Add New Stock</a></li>
-                  <li><a class="dropdown-item text-danger" href="javascript:void(0);" data-bs-toggle="modal" data-bs-target="#maintenanceModal" data-tab="markDamaged"><i class="ri ri-error-warning-line me-2"></i>Mark Damaged</a></li>
-                </ul>
+               <div class="d-flex gap-2">
+                <a href="{{ route('golf-services.ball-collection.index') }}" class="btn btn-sm btn-label-primary">
+                  <i class="ri ri-user-follow-line me-1"></i> Manage Collection
+                </a>
+                <div class="dropdown">
+                  <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                    Inventory Maintenance
+                  </button>
+                  <ul class="dropdown-menu dropdown-menu-end">
+                    <li><a class="dropdown-item" href="javascript:void(0);" data-bs-toggle="modal" data-bs-target="#maintenanceModal" data-tab="addStock"><i class="ri ri-add-line me-2"></i>Add New Stock</a></li>
+                    <li><a class="dropdown-item text-danger" href="javascript:void(0);" data-bs-toggle="modal" data-bs-target="#maintenanceModal" data-tab="markDamaged"><i class="ri ri-error-warning-line me-2"></i>Mark Damaged</a></li>
+                  </ul>
+                </div>
               </div>
             </div>
             
@@ -137,7 +142,7 @@
                       <h6 class="mb-0 fw-bold" id="issueMemberName">-</h6>
                       <small class="text-primary" id="issueMemberCard">-</small>
                     </div>
-                    <div class="text-end">
+                    <div class="text-end" id="issueBalanceDisplay" style="display: none;">
                       <small class="text-muted d-block">Balance</small>
                       <h6 class="mb-0 fw-bold text-success" id="issueMemberBalance">TZS 0</h6>
                     </div>
@@ -146,8 +151,7 @@
               </div>
             </div>
             
-            <div class="col-md-6 border-start">
-              <label class="form-label fw-bold">2. Select Quantity</label>
+              <label class="form-label fw-bold mt-4 mt-md-0">2. Select Quantity</label>
               <div class="row g-2 mb-4">
                 <div class="col-6">
                   <button type="button" class="btn btn-outline-primary w-100 py-3 d-flex flex-column align-items-center" onclick="setIssueQuantity(50)">
@@ -176,6 +180,17 @@
                   <option value="balance">MEMBER BALANCE</option>
                   <option value="card">CARD (POS)</option>
                 </select>
+              </div>
+
+              <div class="mb-4">
+                <label class="form-label fw-bold text-success">4. Designated Collector</label>
+                <select class="form-select form-select-lg border-success border-2" id="issue_collector_id" name="collector_id" required>
+                  <option value="" selected disabled>-- Select Staff for Return --</option>
+                  @foreach($collectors as $collector)
+                    <option value="{{ $collector->id }}">{{ $collector->name }}</option>
+                  @endforeach
+                </select>
+                <div class="form-text text-success"><i class="ri ri-information-line me-1"></i> This staff will be responsible for field recovery.</div>
               </div>
 
               <div class="alert alert-primary d-flex justify-content-between align-items-center p-3 mb-0 shadow-sm border-2">
@@ -215,26 +230,39 @@
             <input type="number" class="form-control form-control-lg" name="quantity" value="50" min="1" required />
             <label>Quantity to Return</label>
           </div>
+          <div class="mb-4">
+            <label class="form-label fw-bold"><i class="ri ri-user-received-2-line me-1 text-success"></i>Returning Collector</label>
+            <select class="form-select form-select-lg border-success border-2" id="return_collector_id" name="collector_id">
+              <option value="" selected>-- No Collector (Walk-in) --</option>
+              @foreach($collectors as $collector)
+                <option value="{{ $collector->id }}">{{ $collector->name }}</option>
+              @endforeach
+            </select>
+          </div>
           <button type="submit" class="btn btn-success btn-lg w-100 py-3">
             <i class="ri ri-check-double-line me-2"></i> CONFIRM RETURN
           </button>
         </form>
         
         <div class="mt-4 pt-2 border-top">
-          <h6 class="fw-bold mb-3 small text-muted text-uppercase">Recently Issued (Awaiting Return)</h6>
+          <h6 class="fw-bold mb-3 small text-muted text-uppercase">Pending Recoveries (Collector Tasks)</h6>
           <div class="list-group list-group-flush">
-            @php
-              $activeIssues = $todayTransactions->where('type', 'issued')->take(5);
-            @endphp
-            @foreach($activeIssues as $issue)
+            @forelse($pendingCollections as $log)
               <div class="list-group-item d-flex justify-content-between align-items-center px-0 py-2 border-0">
                 <div>
-                  <h6 class="mb-0 small fw-bold">{{ $issue->customer_name }}</h6>
-                  <small class="text-muted">{{ $issue->quantity }} balls • {{ $issue->created_at->format('H:i') }}</small>
+                  <h6 class="mb-0 small fw-bold text-success"><i class="ri ri-user-follow-line me-1"></i>{{ $log->collector->name }}</h6>
+                  <div class="d-flex align-items-center gap-2 mt-1">
+                    <span class="badge bg-label-secondary" style="font-size: 0.65rem;">{{ $log->target_quantity }} balls</span>
+                    <small class="text-muted" style="font-size: 0.7rem;">
+                      For: {{ $log->ballTransaction ? $log->ballTransaction->customer_name : 'Guest' }}
+                    </small>
+                  </div>
                 </div>
-                <button class="btn btn-sm btn-label-success px-2 py-1" onclick="quickReturn('{{ $issue->customer_name }}', {{ $issue->quantity }})">Return</button>
+                <button class="btn btn-sm btn-label-success px-2 py-1" onclick="quickReturn('{{ $log->ballTransaction ? addslashes($log->ballTransaction->customer_name) : '' }}', {{ $log->target_quantity }}, {{ $log->collector_id }})">Return</button>
               </div>
-            @endforeach
+            @empty
+              <div class="text-center py-2 text-muted small">No pending recoveries reported.</div>
+            @endforelse
           </div>
         </div>
       </div>
@@ -242,25 +270,55 @@
   </div>
 </div>
 
-<!-- Today's Transactions -->
+<!-- Filters & History -->
+<div class="card mb-6 border-0 shadow-sm">
+  <div class="card-body">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+      <form method="GET" action="{{ route('golf-services.ball-management') }}" id="filterForm" class="row g-3 flex-grow-1">
+        <div class="col-md-4">
+          <div class="input-group input-group-merge">
+            <span class="input-group-text"><i class="ri ri-calendar-line"></i></span>
+            <input type="date" class="form-control" name="from_date" id="from_date" value="{{ $fromDate->format('Y-m-d') }}" />
+            <span class="input-group-text">to</span>
+            <input type="date" class="form-control" name="to_date" id="to_date" value="{{ $toDate->format('Y-m-d') }}" />
+          </div>
+        </div>
+        <div class="col-md-2">
+          <button type="submit" class="btn btn-primary w-100">Apply Filter</button>
+        </div>
+      </form>
+      <div class="d-flex gap-2">
+        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setDateRange('today')">Today</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setDateRange('yesterday')">Yesterday</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setDateRange('this_week')">This Week</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Transactions Table -->
 <div class="row">
   <div class="col-12">
     <div class="card">
-      <div class="card-header d-flex justify-content-between">
-        <h5 class="mb-0">Today's Ball Transactions</h5>
+      <div class="card-header d-flex justify-content-between align-items-center">
         <div>
-          <span class="badge bg-success me-2">Issued: {{ $stats['issued_today'] ?? 0 }}</span>
-          <span class="badge bg-info">Returned: {{ $stats['returned_today'] ?? 0 }}</span>
+          <h5 class="mb-0">Ball Transactions</h5>
+          <small class="text-muted">{{ $fromDate->format('d M Y') }} - {{ $toDate->format('d M Y') }}</small>
+        </div>
+        <div>
+          <span class="badge bg-success me-2">Issued: {{ number_format($transactions->where('type', 'issued')->sum('quantity')) }}</span>
+          <span class="badge bg-info">Returned: {{ number_format($transactions->where('type', 'returned')->sum('quantity')) }}</span>
         </div>
       </div>
       <div class="card-body">
-        <div class="table-responsive">
+        <div class="table-responsive text-nowrap">
           <table class="table table-hover">
             <thead>
               <tr>
                 <th class="text-uppercase small fw-bold">Time Issued</th>
                 <th class="text-uppercase small fw-bold">Time Ret.</th>
-                <th class="text-uppercase small fw-bold">Customer</th>
+                <th class="text-uppercase small fw-bold">Customer / Player</th>
+                <th class="text-uppercase small fw-bold">Collector / Respons.</th>
                 <th class="text-uppercase small fw-bold text-center">Issued</th>
                 <th class="text-uppercase small fw-bold text-center">Ret.</th>
                 <th class="text-uppercase small fw-bold text-center">Rem.</th>
@@ -270,32 +328,50 @@
             </thead>
             <tbody class="table-border-bottom-0">
               @forelse($ballSessions ?? [] as $session)
+              @if($session)
               <tr>
-                <td class="small">{{ $session->time_issued }}</td>
-                <td class="small text-success">{{ $session->time_returned }}</td>
-                <td class="fw-bold text-dark">{{ $session->customer_name }}</td>
-                <td class="text-center">
-                  <span class="badge bg-label-warning px-2">{{ $session->issued }}</span>
+                <td class="small">{{ $session->time_issued ?? '-' }}</td>
+                <td class="small text-success">{{ $session->time_returned ?? '-' }}</td>
+                <td class="fw-bold text-dark">
+                  <div>{{ $session->customer_name ?? 'Guest' }}</div>
+                  @if(isset($session->member_id) && $session->member_id)
+                    <small class="text-primary fw-normal">Member</small>
+                  @endif
+                </td>
+                <td>
+                  @if(isset($session->returned_by) && $session->returned_by)
+                    <div class="fw-bold text-success"><i class="ri ri-user-received-2-line me-1"></i>{{ $session->returned_by }}</div>
+                    <small class="text-muted">Returner</small>
+                  @elseif(isset($session->designated_collector) && $session->designated_collector)
+                    <div class="fw-bold text-warning"><i class="ri ri-user-follow-line me-1"></i>{{ $session->designated_collector }}</div>
+                    <small class="text-muted">Designated</small>
+                  @else
+                    <span class="text-muted small">-</span>
+                  @endif
                 </td>
                 <td class="text-center">
-                  <span class="badge bg-label-success px-2">{{ $session->returned }}</span>
+                  <span class="badge bg-label-warning px-2">{{ $session->issued ?? 0 }}</span>
                 </td>
                 <td class="text-center">
-                  @if($session->remaining > 0)
+                  <span class="badge bg-label-success px-2">{{ $session->returned ?? 0 }}</span>
+                </td>
+                <td class="text-center">
+                  @if(isset($session->remaining) && $session->remaining > 0)
                     <span class="badge bg-danger rounded-pill px-2">{{ $session->remaining }}</span>
                   @else
                     <span class="badge bg-label-secondary rounded-pill px-2">0</span>
                   @endif
                 </td>
                 <td class="text-end fw-bold text-primary">
-                  {{ $session->amount ? 'TZS ' . number_format($session->amount) : '-' }}
+                  {{ (isset($session->amount) && $session->amount) ? 'TZS ' . number_format($session->amount) : '-' }}
                 </td>
                 <td class="text-center">
-                   <button class="btn btn-sm btn-icon btn-label-primary border-0" onclick="editTransaction({{ $session->last_txn_id }}, {{ $session->issued }}, '{{ $session->type }}', {{ $session->amount ?? 0 }}, '{{ $session->payment_method ?? '' }}', {{ $session->member_id ?? 'null' }}, {{ $session->remaining }}, '{{ addslashes($session->customer_name) }}')" title="Manage">
+                   <button class="btn btn-sm btn-icon btn-label-primary border-0" onclick="editTransaction({{ $session->last_txn_id ?? 0 }}, {{ $session->issued ?? 0 }}, '{{ $session->type ?? '' }}', {{ $session->amount ?? 0 }}, '{{ $session->payment_method ?? '' }}', {{ $session->member_id ?? 'null' }}, {{ $session->remaining ?? 0 }}, '{{ addslashes($session->customer_name ?? '') }}')" title="Manage">
                       <i class="ri ri-settings-4-line"></i>
                     </button>
                 </td>
               </tr>
+              @endif
               @empty
               <tr>
                 <td colspan="8" class="text-center py-5 text-muted">
@@ -448,6 +524,44 @@
   </div>
 </div>
 
+<!-- Register Member Modal (Quick Add from Ball Management) -->
+<div class="modal fade" id="registerMemberModal" tabindex="-1" aria-hidden="true" style="z-index: 1100;">
+  <div class="modal-dialog">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header bg-success py-3">
+        <h5 class="modal-title text-white fw-bold"><i class="ri-user-add-line me-2"></i>Quick Register Member</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form id="quickRegisterForm">
+          <input type="hidden" name="has_full_access" value="0"> {{-- Registering as a Custom Member --}}
+          <div class="form-floating form-floating-outline mb-4">
+            <input type="text" class="form-control fw-bold" id="reg_name" name="name" placeholder="Full Name" required>
+            <label>Full Name *</label>
+          </div>
+          <div class="form-floating form-floating-outline mb-4">
+            <input type="tel" class="form-control fw-bold" id="reg_phone" name="phone" placeholder="Phone Number" required>
+            <label>Phone Number *</label>
+          </div>
+          <div class="form-floating form-floating-outline mb-4">
+            <input type="email" class="form-control" id="reg_email" name="email" placeholder="Email (optional)">
+            <label>Email (optional)</label>
+          </div>
+          <div class="alert alert-info py-2 small mb-0">
+            <i class="ri ri-information-line me-1"></i> This will register a new <b>Custom Member</b> who can maintain a balance for golf services.
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer border-0 bg-light py-3">
+        <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-success px-4 fw-bold" id="confirmRegBtn" onclick="submitQuickRegistration()">
+          <i class="ri ri-user-add-line me-1"></i> REGISTER MEMBER
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 @endsection
 
 @push('scripts')
@@ -471,10 +585,17 @@ function setIssueQuantity(qty) {
   });
 }
 
-function quickReturn(name, qty) {
+function quickReturn(name, qty, collectorId) {
   const returnForm = document.getElementById('returnBallsForm');
   returnForm.querySelector('[name="customer_name"]').value = name;
   returnForm.querySelector('[name="quantity"]').value = qty;
+  
+  const collectorSelect = returnForm.querySelector('[name="collector_id"]');
+  if (collectorId && collectorSelect) {
+    collectorSelect.value = collectorId;
+  } else if (collectorSelect) {
+    collectorSelect.value = "";
+  }
   
   // Scroll to form and highlight
   returnForm.closest('.card').scrollIntoView({ behavior: 'smooth' });
@@ -514,13 +635,28 @@ document.getElementById('issue_customer_name')?.addEventListener('input', functi
     })
     .then(r => r.json())
     .then(members => {
+      // Create Register Shortcut
+      const regShortcut = `
+        <div class="list-group-item list-group-item-action bg-success-subtle border-success border-start border-4 mb-1" style="cursor:pointer" onclick="openRegistrationModal('${query.replace(/'/g, "\\'")}')">
+          <div class="d-flex align-items-center">
+            <div class="avatar avatar-sm bg-success me-3">
+              <span class="avatar-initial rounded"><i class="ri ri-user-add-line"></i></span>
+            </div>
+            <div>
+              <h6 class="mb-0 text-success fw-bold">Register "${query}"?</h6>
+              <small class="text-muted small">Add as new custom member</small>
+            </div>
+          </div>
+        </div>`;
+
       if (members && members.length > 0) {
-        suggestions.innerHTML = members.slice(0, 5).map(m => {
+        suggestions.innerHTML = regShortcut + members.slice(0, 5).map(m => {
           const safeName = (m.name || '').replace(/'/g, "\\'");
           const safeCardNumber = (m.card_number || '').replace(/'/g, "\\'");
           const safePhone = (m.phone || '').replace(/'/g, "\\'");
+          const hasFullAccess = m.has_full_access ? 1 : 0;
           return `
-          <div class="list-group-item list-group-item-action p-3" style="cursor: pointer;" onclick="selectIssueMember(${m.id}, '${safeName}', '${safeCardNumber}', '${safePhone}', ${m.balance || 0});">
+          <div class="list-group-item list-group-item-action p-3" style="cursor: pointer;" onclick="selectIssueMember(${m.id}, '${safeName}', '${safeCardNumber}', '${safePhone}', ${m.balance || 0}, ${hasFullAccess});">
             <div class="d-flex justify-content-between align-items-center">
               <div>
                 <strong class="text-primary">${m.name || 'N/A'}</strong>
@@ -544,7 +680,7 @@ document.getElementById('issue_customer_name')?.addEventListener('input', functi
         `;
         suggestions.style.display = 'block';
       } else {
-        suggestions.innerHTML = `
+        suggestions.innerHTML = regShortcut + `
           <div class="list-group-item list-group-item-action bg-light" style="cursor: pointer;" onclick="selectWalkInCustomer('${query.replace(/'/g, "\\'")}');">
             <div class="d-flex align-items-center">
               <i class="ri ri-user-add-line me-2 text-muted"></i>
@@ -559,7 +695,7 @@ document.getElementById('issue_customer_name')?.addEventListener('input', functi
   }, 300);
 });
 
-function selectIssueMember(memberId, name, cardNumber, phone, balance) {
+function selectIssueMember(memberId, name, cardNumber, phone, balance, hasFullAccess = 1) {
   document.getElementById('issue_member_id').value = memberId;
   document.getElementById('issue_customer_name').value = name;
   document.getElementById('issueCustomerSuggestions').style.display = 'none';
@@ -570,16 +706,37 @@ function selectIssueMember(memberId, name, cardNumber, phone, balance) {
   document.getElementById('issueMemberName').textContent = name || '-';
   document.getElementById('issueMemberCard').textContent = cardNumber || '-';
   document.getElementById('issueMemberBalance').textContent = 'TZS ' + selectedIssueMemberBalance.toLocaleString();
+  
+  // Optimization: Hide balance if it is 0
+  if (selectedIssueMemberBalance > 0) {
+    document.getElementById('issueBalanceDisplay').style.display = 'block';
+  } else {
+    document.getElementById('issueBalanceDisplay').style.display = 'none';
+  }
+
   document.getElementById('issueMemberInfo').style.display = 'block';
   
-  // Smart Default: If balance is enough, select balance payment
+  // User Rule: Cardholders (hasFullAccess=1) MUST pay by balance.
+  // Custom members (hasFullAccess=0) can pay by CASH.
   const paymentMethodSelect = document.getElementById('issue_payment_method');
-  const amount = parseInt(document.getElementById('issue_quantity').value) * costPerBall;
+  const balanceOption = paymentMethodSelect.querySelector('option[value="balance"]');
+  const cashOption = paymentMethodSelect.querySelector('option[value="cash"]');
   
-  if (selectedIssueMemberBalance >= amount) {
+  if (hasFullAccess) {
     paymentMethodSelect.value = 'balance';
+    if (cashOption) cashOption.disabled = true;
+    if (balanceOption) balanceOption.disabled = false;
+    // Show a small hint if balance is low
+    const amount = parseInt(document.getElementById('issue_quantity').value) * costPerBall;
+    if (selectedIssueMemberBalance < amount) {
+      document.getElementById('issueMemberBalance').classList.add('text-danger');
+      document.getElementById('issueMemberBalance').textContent += ' (Insufficient)';
+    }
   } else {
     paymentMethodSelect.value = 'cash';
+    if (cashOption) cashOption.disabled = false;
+    // Walk-ins/Custom members shouldn't use card balance usually
+    if (balanceOption) balanceOption.disabled = true;
   }
   
   updateIssueAmount();
@@ -799,12 +956,77 @@ function submitQuickReturn() {
       btn.disabled = false;
       btn.innerHTML = originalText;
     }
-  })
-  .catch(() => {
-    btn.disabled = false;
-    btn.innerHTML = originalText;
-    showError('Error processing return');
   });
+}
+
+function openRegistrationModal(name) {
+  document.getElementById('reg_name').value = name;
+  document.getElementById('reg_phone').value = '';
+  document.getElementById('reg_email').value = '';
+  document.getElementById('issueCustomerSuggestions').style.display = 'none';
+  new bootstrap.Modal(document.getElementById('registerMemberModal')).show();
+}
+
+function submitQuickRegistration() {
+  const form = document.getElementById('quickRegisterForm');
+  const formData = new FormData(form);
+  const btn = document.getElementById('confirmRegBtn');
+  const origText = btn.innerHTML;
+
+  if (!form.checkValidity()) { form.reportValidity(); return; }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Registering...';
+
+  fetch('{{ route("payments.members.store") }}', {
+    method: 'POST',
+    headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' },
+    body: formData
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.success && data.member) {
+      showSuccess('Member registered successfully!');
+      bootstrap.Modal.getInstance(document.getElementById('registerMemberModal')).hide();
+      // Auto-select the new member (Custom Member = no full access)
+      selectIssueMember(data.member.id, data.member.name, data.member.card_number, data.member.balance, 0);
+    } else {
+      showError(data.message || 'Registration failed');
+    }
+  })
+  .catch(err => {
+    showError('Network error during registration');
+  })
+  .finally(() => {
+    btn.disabled = false;
+    btn.innerHTML = origText;
+  });
+}
+
+function setDateRange(range) {
+  const today = new Date();
+  const from  = document.getElementById('from_date');
+  const to    = document.getElementById('to_date');
+  let f, t;
+
+  const formatDate = (d) => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  switch(range) {
+    case 'today':       f = new Date(today); t = new Date(today); break;
+    case 'yesterday':   f = new Date(today); f.setDate(f.getDate()-1); t = new Date(f); break;
+    case 'this_week':   f = new Date(today); f.setDate(f.getDate()-f.getDay()); t = new Date(today); break;
+  }
+  
+  if(f && t) {
+    from.value = formatDate(f);
+    to.value   = formatDate(t);
+    document.getElementById('filterForm').submit();
+  }
 }
 
 function showError(msg) {
@@ -840,6 +1062,16 @@ function showSuccess(msg) {
   color: white !important;
 }
 .progress-white { background-color: rgba(255,255,255,0.2) !important; }
+.bg-label-info { background-color: #e1f5fe !important; color: #0288d1 !important; }
+
+@media (max-width: 767.98px) {
+    .border-md-start {
+        border-left: none !important;
+        border-top: 1px solid rgba(0,0,0,0.05);
+        padding-top: 2rem;
+        margin-top: 1rem;
+    }
+}
 .alert-white { background-color: white !important; border: 0; }
 </style>
 @endpush

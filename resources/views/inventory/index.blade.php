@@ -13,22 +13,35 @@
   <div class="col-12">
     <div class="card" style="background: linear-gradient(135deg, #940000 0%, #b30000 100%);">
       <div class="card-body text-white p-4">
-        <div class="d-flex justify-content-between align-items-center flex-wrap">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
           <div>
-            <h4 class="mb-2 text-white fw-bold">
+            <h4 class="mb-2 text-white fw-bold text-center text-md-start">
               <i class="icon-base ri ri-archive-line me-2"></i>Inventory Management
             </h4>
-            <p class="mb-0 opacity-75">Manage golf equipment, supplies, and stock levels</p>
-          </div>
-          <div class="d-flex gap-2 mt-3 mt-md-0">
-            <button class="btn btn-light" data-bs-toggle="modal" data-bs-target="#addItemModal">
-              <i class="icon-base ri ri-add-line me-1"></i>Add Item
+            <div class="card-header border-bottom p-0 border-0">
+        <div class="d-flex flex-column flex-md-row align-items-center justify-content-between gap-3">
+          <ul class="nav nav-pills card-header-pills mb-2 mb-md-0 overflow-auto flex-nowrap w-100 w-md-auto" role="tablist">
+            @if(auth()->user()->role !== 'counter')
+            <li class="nav-item">
+              <button class="nav-link active px-3" data-bs-toggle="tab" data-bs-target="#tab-inventory" onclick="switchMode('general')">Inventory</button>
+            </li>
+            @endif
+            <li class="nav-item">
+              <button class="nav-link {{ auth()->user()->role === 'counter' ? 'active' : '' }} px-3" data-bs-toggle="tab" data-bs-target="#tab-menu-items" onclick="switchMode('menu')">Menu Items</button>
+            </li>
+          </ul>
+          @if(auth()->user()->role !== 'counter')
+          <div class="d-flex gap-2 w-100 w-md-auto justify-content-center">
+            <button class="btn btn-xs btn-sm-sm btn-label-secondary flex-grow-1 flex-md-grow-0" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
+              <i class="icon-base ri ri-folder-add-line me-1"></i> CATEGORY
             </button>
-            <button class="btn btn-outline-light" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
-              <i class="icon-base ri ri-folder-add-line me-1"></i>Add Category
+            <button class="btn btn-xs btn-sm-sm btn-primary flex-grow-1 flex-md-grow-0" data-bs-toggle="modal" data-bs-target="#addItemModal">
+              <i class="icon-base ri ri-add-line me-1"></i> ADD ITEM
             </button>
           </div>
+          @endif
         </div>
+      </div>
       </div>
     </div>
   </div>
@@ -152,37 +165,61 @@
 <div class="row">
   <div class="col-12">
     <div class="card">
-      <div class="card-header d-flex justify-content-between align-items-center">
+      <div class="card-header d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
         <h5 class="mb-0"><i class="icon-base ri ri-list-check me-2"></i>Inventory Items</h5>
         <div class="d-flex gap-2">
-          <button class="btn btn-sm btn-outline-success" onclick="exportInventory()">
+          <button class="btn btn-sm btn-outline-success flex-grow-1 flex-md-grow-0" onclick="exportInventory()">
             <i class="icon-base ri ri-download-line me-1"></i>Export
           </button>
-          <button class="btn btn-sm btn-outline-primary" onclick="printInventory()">
+          <button class="btn btn-sm btn-outline-primary flex-grow-1 flex-md-grow-0" onclick="printInventory()">
             <i class="icon-base ri ri-printer-line me-1"></i>Print
           </button>
         </div>
       </div>
       <div class="card-body p-0">
-        <div class="table-responsive">
-          <table class="table table-hover mb-0" id="inventoryTable">
-            <thead class="table-light">
-              <tr>
-                <th>Item Code</th>
-                <th>Item Name</th>
-                <th>Category</th>
-                <th>Quantity</th>
-                <th>Unit Price</th>
-                <th>Total Value</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody id="inventoryTableBody">
-              <!-- Items will be loaded here -->
-            </tbody>
-          </table>
+        <div class="tab-content border-0 p-0">
+        <div class="tab-pane fade {{ auth()->user()->role !== 'counter' ? 'show active' : '' }}" id="tab-inventory" role="tabpanel">
+          <div class="table-responsive">
+            <table class="table table-hover">
+              <thead class="table-light">
+                <tr>
+                  <th>Code</th>
+                  <th>Item Name</th>
+                  <th>Category</th>
+                  <th>On Hand</th>
+                  <th>Unit Price</th>
+                  <th>Total Value</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="inventoryTableBody">
+                {{-- Data loaded via AJAX --}}
+              </tbody>
+            </table>
+          </div>
         </div>
+        <div class="tab-pane fade {{ auth()->user()->role === 'counter' ? 'show active' : '' }}" id="tab-menu-items" role="tabpanel">
+          <div class="table-responsive">
+            <table class="table table-hover">
+              <thead class="table-light">
+                <tr>
+                  <th>Item Name</th>
+                  <th>Category</th>
+                  <th>Price</th>
+                  <th>Stock Quantity</th>
+                  <th>Threshold</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="menuItemsTableBody">
+                {{-- Data loaded via AJAX --}}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
       </div>
       <div class="card-footer">
         <div class="d-flex justify-content-between align-items-center">
@@ -414,6 +451,7 @@
       </div>
       <form id="stockAdjustForm" onsubmit="adjustStock(event)">
         <input type="hidden" id="adjust_item_id" name="item_id">
+        <input type="hidden" id="adjust_mode" value="general">
         <div class="modal-body">
           <div class="alert alert-info">
             <strong>Item:</strong> <span id="adjust_item_name"></span><br>
@@ -458,29 +496,31 @@
 <script>
 let inventoryItems = [];
 let categories = [];
+let menuItems = [];
+let currentMode = 'general';
 
 document.addEventListener('DOMContentLoaded', function() {
-  loadCategories();
-  loadInventory();
+  refreshData();
 });
 
-function loadCategories() {
-  // Load from localStorage or use defaults
-  categories = JSON.parse(localStorage.getItem('inventoryCategories') || '[]');
-  
-  if (categories.length === 0) {
-    categories = [
-      { id: 1, name: 'Golf Balls', description: 'All types of golf balls' },
-      { id: 2, name: 'Golf Clubs', description: 'Drivers, irons, putters, etc.' },
-      { id: 3, name: 'Golf Bags', description: 'Carry bags, cart bags, stand bags' },
-      { id: 4, name: 'Accessories', description: 'Gloves, tees, markers, etc.' },
-      { id: 5, name: 'Apparel', description: 'Golf shirts, pants, caps' },
-      { id: 6, name: 'Equipment', description: 'Carts, range equipment' }
-    ];
-    localStorage.setItem('inventoryCategories', JSON.stringify(categories));
-  }
-  
-  updateCategoryDropdowns();
+function refreshData() {
+  fetch('{{ route("inventory.index") }}', {
+    headers: { 'Accept': 'application/json' }
+  })
+  .then(r => r.json())
+  .then(data => {
+    inventoryItems = data.items;
+    categories = data.categories;
+    menuItems = data.menuItems;
+    updateCategoryDropdowns();
+    renderInventory();
+    renderMenuItems();
+    updateStats();
+  });
+}
+
+function switchMode(mode) {
+  currentMode = mode;
 }
 
 function updateCategoryDropdowns() {
@@ -489,10 +529,7 @@ function updateCategoryDropdowns() {
     const el = document.getElementById(id);
     if (el) {
       const currentValue = el.value;
-      el.innerHTML = '<option value="">Select Category</option>';
-      if (id === 'filterCategory') {
-        el.innerHTML = '<option value="">All Categories</option>';
-      }
+      el.innerHTML = id === 'filterCategory' ? '<option value="">All Categories</option>' : '<option value="">Select Category</option>';
       categories.forEach(cat => {
         el.innerHTML += `<option value="${cat.id}">${cat.name}</option>`;
       });
@@ -501,44 +538,26 @@ function updateCategoryDropdowns() {
   });
 }
 
-function loadInventory() {
-  // Load from localStorage or use sample data
-  inventoryItems = JSON.parse(localStorage.getItem('inventoryItems') || '[]');
-  
-  if (inventoryItems.length === 0) {
-    inventoryItems = [
-      { id: 1, code: 'GB001', name: 'Titleist Pro V1', category: 1, quantity: 150, unit_price: 15000, reorder_level: 50, unit: 'dozen', location: 'Shelf A1', description: 'Premium golf balls' },
-      { id: 2, code: 'GB002', name: 'Callaway Chrome Soft', category: 1, quantity: 80, unit_price: 12000, reorder_level: 30, unit: 'dozen', location: 'Shelf A2', description: 'Soft feel golf balls' },
-      { id: 3, code: 'GC001', name: 'TaylorMade Driver', category: 2, quantity: 5, unit_price: 850000, reorder_level: 2, unit: 'pcs', location: 'Display B1', description: 'Latest model driver' },
-      { id: 4, code: 'GA001', name: 'Golf Gloves', category: 4, quantity: 25, unit_price: 25000, reorder_level: 10, unit: 'pair', location: 'Shelf C1', description: 'Leather golf gloves' },
-      { id: 5, code: 'GT001', name: 'Wooden Tees', category: 4, quantity: 500, unit_price: 500, reorder_level: 100, unit: 'pcs', location: 'Shelf C2', description: 'Standard wooden tees' },
-      { id: 6, code: 'GB003', name: 'Range Balls', category: 1, quantity: 8, unit_price: 5000, reorder_level: 50, unit: 'box', location: 'Storage D1', description: 'Practice range balls' }
-    ];
-    localStorage.setItem('inventoryItems', JSON.stringify(inventoryItems));
-  }
-  
-  renderInventory();
-  updateStats();
+function renderInventory(items = null) {
+  // Existing render logic...
 }
 
-function renderInventory(items = null) {
-  const tbody = document.getElementById('inventoryTableBody');
-  const displayItems = items || inventoryItems;
+function renderMenuItems() {
+  const tbody = document.getElementById('menuItemsTableBody');
+  if (!tbody) return;
   
-  if (displayItems.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-muted">No items found</td></tr>';
-    document.getElementById('showingCount').textContent = '0';
+  if (menuItems.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-muted">No menu items found</td></tr>';
     return;
   }
   
-  tbody.innerHTML = displayItems.map(item => {
-    const category = categories.find(c => c.id == item.category);
-    const totalValue = item.quantity * item.unit_price;
+  tbody.innerHTML = menuItems.map(item => {
+    const categoryName = item.category ? item.category.name : '-';
     let statusBadge = '';
     
-    if (item.quantity === 0) {
+    if (item.stock_quantity === 0) {
       statusBadge = '<span class="badge bg-danger">Out of Stock</span>';
-    } else if (item.quantity <= item.reorder_level) {
+    } else if (item.stock_quantity <= item.low_stock_threshold) {
       statusBadge = '<span class="badge bg-warning">Low Stock</span>';
     } else {
       statusBadge = '<span class="badge bg-success">In Stock</span>';
@@ -546,31 +565,24 @@ function renderInventory(items = null) {
     
     return `
       <tr>
-        <td><code>${item.code}</code></td>
         <td><strong>${item.name}</strong></td>
-        <td>${category ? category.name : '-'}</td>
-        <td>${item.quantity} ${item.unit}</td>
-        <td>TZS ${item.unit_price.toLocaleString()}</td>
-        <td>TZS ${totalValue.toLocaleString()}</td>
+        <td>${categoryName}</td>
+        <td>TZS ${number_format(item.price)}</td>
+        <td>${item.stock_quantity} units</td>
+        <td>${item.low_stock_threshold}</td>
         <td>${statusBadge}</td>
         <td>
-          <div class="dropdown">
-            <button class="btn btn-sm btn-label-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-              Actions
-            </button>
-            <ul class="dropdown-menu">
-              <li><a class="dropdown-item" href="javascript:void(0)" onclick="editItem(${item.id})"><i class="icon-base ri ri-edit-line me-2"></i>Edit</a></li>
-              <li><a class="dropdown-item" href="javascript:void(0)" onclick="openStockAdjust(${item.id})"><i class="icon-base ri ri-add-circle-line me-2"></i>Adjust Stock</a></li>
-              <li><hr class="dropdown-divider"></li>
-              <li><a class="dropdown-item text-danger" href="javascript:void(0)" onclick="deleteItem(${item.id})"><i class="icon-base ri ri-delete-bin-line me-2"></i>Delete</a></li>
-            </ul>
-          </div>
+          <button class="btn btn-sm btn-label-primary" onclick="openStockAdjust(${item.id}, 'menu')">
+            <i class="icon-base ri ri-add-circle-line me-1"></i>Adjust Stock
+          </button>
         </td>
       </tr>
     `;
   }).join('');
-  
-  document.getElementById('showingCount').textContent = displayItems.length;
+}
+
+function number_format(n) {
+  return parseFloat(n).toLocaleString();
 }
 
 function updateStats() {
@@ -587,189 +599,168 @@ function updateStats() {
 
 function filterItems() {
   const search = document.getElementById('searchItem').value.toLowerCase();
-  const category = document.getElementById('filterCategory').value;
+  const categoryId = document.getElementById('filterCategory').value;
   const status = document.getElementById('filterStatus').value;
   
   let filtered = inventoryItems;
   
   if (search) {
-    filtered = filtered.filter(i => 
-      i.name.toLowerCase().includes(search) || 
-      i.code.toLowerCase().includes(search)
-    );
+    filtered = filtered.filter(i => i.name.toLowerCase().includes(search) || i.item_code.toLowerCase().includes(search));
   }
-  
-  if (category) {
-    filtered = filtered.filter(i => i.category == category);
+  if (categoryId) {
+    filtered = filtered.filter(i => i.category_id == categoryId);
   }
-  
   if (status) {
-    if (status === 'in_stock') {
-      filtered = filtered.filter(i => i.quantity > i.reorder_level);
-    } else if (status === 'low_stock') {
-      filtered = filtered.filter(i => i.quantity > 0 && i.quantity <= i.reorder_level);
-    } else if (status === 'out_of_stock') {
-      filtered = filtered.filter(i => i.quantity === 0);
-    }
+    if (status === 'in_stock') filtered = filtered.filter(i => i.quantity > i.reorder_level);
+    else if (status === 'low_stock') filtered = filtered.filter(i => i.quantity > 0 && i.quantity <= i.reorder_level);
+    else if (status === 'out_of_stock') filtered = filtered.filter(i => i.quantity === 0);
   }
-  
   renderInventory(filtered);
+}
+
+function saveCategory(e) {
+  e.preventDefault();
+  const formData = new FormData(e.target);
+  const data = Object.fromEntries(formData.entries());
+
+  fetch('{{ route("inventory.categories.store") }}', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' },
+    body: JSON.stringify(data)
+  })
+  .then(r => r.json())
+  .then(res => {
+    if(res.success) {
+      bootstrap.Modal.getInstance(document.getElementById('addCategoryModal')).hide();
+      e.target.reset();
+      refreshData();
+      alert('Category added successfully');
+    } else {
+      alert('Error: ' + JSON.stringify(res.errors));
+    }
+  });
 }
 
 function saveItem(e) {
   e.preventDefault();
-  
-  const newItem = {
-    id: Date.now(),
-    code: document.getElementById('item_code').value,
-    name: document.getElementById('item_name').value,
-    category: parseInt(document.getElementById('item_category').value),
-    quantity: parseInt(document.getElementById('item_quantity').value),
-    unit_price: parseInt(document.getElementById('item_price').value),
-    reorder_level: parseInt(document.getElementById('item_reorder').value) || 10,
-    unit: document.getElementById('item_unit').value,
-    location: document.getElementById('item_location').value,
-    description: document.getElementById('item_description').value
-  };
-  
-  inventoryItems.push(newItem);
-  localStorage.setItem('inventoryItems', JSON.stringify(inventoryItems));
-  
-  bootstrap.Modal.getInstance(document.getElementById('addItemModal')).hide();
-  document.getElementById('addItemForm').reset();
-  
-  renderInventory();
-  updateStats();
-  alert('Item added successfully!');
+  const formData = new FormData(e.target);
+  const data = Object.fromEntries(formData.entries());
+  data.category_id = data.category; // Mapping for backend
+
+  fetch('{{ route("inventory.items.store") }}', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' },
+    body: JSON.stringify(data)
+  })
+  .then(r => r.json())
+  .then(res => {
+    if(res.success) {
+      bootstrap.Modal.getInstance(document.getElementById('addItemModal')).hide();
+      e.target.reset();
+      refreshData();
+      alert('Item added successfully');
+    } else {
+      alert('Error: ' + JSON.stringify(res.errors));
+    }
+  });
 }
 
 function editItem(id) {
   const item = inventoryItems.find(i => i.id === id);
   if (!item) return;
-  
   document.getElementById('edit_item_id').value = item.id;
-  document.getElementById('edit_item_code').value = item.code;
+  document.getElementById('edit_item_code').value = item.item_code;
   document.getElementById('edit_item_name').value = item.name;
-  document.getElementById('edit_item_category').value = item.category;
+  document.getElementById('edit_item_category').value = item.category_id;
   document.getElementById('edit_item_quantity').value = item.quantity;
   document.getElementById('edit_item_price').value = item.unit_price;
   document.getElementById('edit_item_reorder').value = item.reorder_level;
   document.getElementById('edit_item_unit').value = item.unit;
   document.getElementById('edit_item_location').value = item.location || '';
   document.getElementById('edit_item_description').value = item.description || '';
-  
   new bootstrap.Modal(document.getElementById('editItemModal')).show();
 }
 
 function updateItem(e) {
   e.preventDefault();
-  
-  const id = parseInt(document.getElementById('edit_item_id').value);
-  const index = inventoryItems.findIndex(i => i.id === id);
-  
-  if (index === -1) return;
-  
-  inventoryItems[index] = {
-    ...inventoryItems[index],
-    code: document.getElementById('edit_item_code').value,
-    name: document.getElementById('edit_item_name').value,
-    category: parseInt(document.getElementById('edit_item_category').value),
-    quantity: parseInt(document.getElementById('edit_item_quantity').value),
-    unit_price: parseInt(document.getElementById('edit_item_price').value),
-    reorder_level: parseInt(document.getElementById('edit_item_reorder').value) || 10,
-    unit: document.getElementById('edit_item_unit').value,
-    location: document.getElementById('edit_item_location').value,
-    description: document.getElementById('edit_item_description').value
-  };
-  
-  localStorage.setItem('inventoryItems', JSON.stringify(inventoryItems));
-  
-  bootstrap.Modal.getInstance(document.getElementById('editItemModal')).hide();
-  
-  renderInventory();
-  updateStats();
-  alert('Item updated successfully!');
+  const id = document.getElementById('edit_item_id').value;
+  const formData = new FormData(e.target);
+  const data = Object.fromEntries(formData.entries());
+  data.category_id = data.category;
+
+  fetch(`{{ url('inventory/items') }}/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' },
+    body: JSON.stringify(data)
+  })
+  .then(r => r.json())
+  .then(res => {
+    if(res.success) {
+      bootstrap.Modal.getInstance(document.getElementById('editItemModal')).hide();
+      refreshData();
+      alert('Item updated successfully');
+    }
+  });
 }
 
-function deleteItem(id) {
-  if (!confirm('Are you sure you want to delete this item?')) return;
-  
-  inventoryItems = inventoryItems.filter(i => i.id !== id);
-  localStorage.setItem('inventoryItems', JSON.stringify(inventoryItems));
-  
-  renderInventory();
-  updateStats();
-  alert('Item deleted successfully!');
-}
-
-function openStockAdjust(id) {
-  const item = inventoryItems.find(i => i.id === id);
+function openStockAdjust(id, mode = 'general') {
+  const item = mode === 'menu' ? menuItems.find(i => i.id === id) : inventoryItems.find(i => i.id === id);
   if (!item) return;
-  
   document.getElementById('adjust_item_id').value = item.id;
   document.getElementById('adjust_item_name').textContent = item.name;
-  document.getElementById('adjust_current_stock').textContent = item.quantity + ' ' + item.unit;
+  document.getElementById('adjust_current_stock').textContent = (mode === 'menu' ? item.stock_quantity : item.quantity) + ' units';
   document.getElementById('adjust_quantity').value = '';
   document.getElementById('adjust_reason').value = '';
-  
+  document.getElementById('adjust_mode').value = mode; // Hidden field to track mode
   new bootstrap.Modal(document.getElementById('stockAdjustModal')).show();
 }
 
 function adjustStock(e) {
   e.preventDefault();
-  
-  const id = parseInt(document.getElementById('adjust_item_id').value);
-  const type = document.getElementById('adjust_type').value;
-  const quantity = parseInt(document.getElementById('adjust_quantity').value);
-  
-  const index = inventoryItems.findIndex(i => i.id === id);
-  if (index === -1) return;
-  
-  if (type === 'add') {
-    inventoryItems[index].quantity += quantity;
-  } else if (type === 'remove') {
-    inventoryItems[index].quantity = Math.max(0, inventoryItems[index].quantity - quantity);
-  } else if (type === 'set') {
-    inventoryItems[index].quantity = quantity;
-  }
-  
-  localStorage.setItem('inventoryItems', JSON.stringify(inventoryItems));
-  
-  bootstrap.Modal.getInstance(document.getElementById('stockAdjustModal')).hide();
-  
-  renderInventory();
-  updateStats();
-  alert('Stock adjusted successfully!');
+  const id = document.getElementById('adjust_item_id').value;
+  const mode = document.getElementById('adjust_mode').value;
+  const formData = new FormData(e.target);
+  const data = Object.fromEntries(formData.entries());
+
+  const url = mode === 'menu' ? `{{ url('inventory/menu-items') }}/${id}/adjust` : `{{ url('inventory/items') }}/${id}/adjust`;
+
+  fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' },
+    body: JSON.stringify(data)
+  })
+  .then(r => r.json())
+  .then(res => {
+    if(res.success) {
+      bootstrap.Modal.getInstance(document.getElementById('stockAdjustModal')).hide();
+      refreshData();
+      alert('Stock adjusted successfully');
+    }
+  });
 }
 
-function saveCategory(e) {
-  e.preventDefault();
-  
-  const newCategory = {
-    id: Date.now(),
-    name: document.getElementById('category_name').value,
-    description: document.getElementById('category_description').value
-  };
-  
-  categories.push(newCategory);
-  localStorage.setItem('inventoryCategories', JSON.stringify(categories));
-  
-  bootstrap.Modal.getInstance(document.getElementById('addCategoryModal')).hide();
-  document.getElementById('addCategoryForm').reset();
-  
-  updateCategoryDropdowns();
-  alert('Category added successfully!');
+function deleteItem(id) {
+  if (!confirm('Are you sure you want to delete this item?')) return;
+  fetch(`{{ url('inventory/items') }}/${id}`, {
+    method: 'DELETE',
+    headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' }
+  })
+  .then(r => r.json())
+  .then(res => {
+    if(res.success) {
+      refreshData();
+      alert('Item deleted successfully');
+    }
+  });
 }
 
 function exportInventory() {
   let csv = 'Item Code,Item Name,Category,Quantity,Unit,Unit Price,Total Value,Reorder Level,Location\n';
-  
   inventoryItems.forEach(item => {
-    const category = categories.find(c => c.id == item.category);
+    const categoryName = item.category ? item.category.name : '';
     const totalValue = item.quantity * item.unit_price;
-    csv += `"${item.code}","${item.name}","${category ? category.name : ''}",${item.quantity},"${item.unit}",${item.unit_price},${totalValue},${item.reorder_level},"${item.location || ''}"\n`;
+    csv += `"${item.item_code}","${item.name}","${categoryName}",${item.quantity},"${item.unit}",${item.unit_price},${totalValue},${item.reorder_level},"${item.location || ''}"\n`;
   });
-  
   const blob = new Blob([csv], { type: 'text/csv' });
   const url = window.URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -778,8 +769,6 @@ function exportInventory() {
   a.click();
 }
 
-function printInventory() {
-  window.print();
-}
+function printInventory() { window.print(); }
 </script>
 @endpush

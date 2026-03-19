@@ -50,6 +50,7 @@
               <h4 class="text-warning">TZS {{ number_format($todaySummary['equipment_sales'] ?? 0) }}</h4>
             </div>
           </div>
+          @if(auth()->user()->role !== 'storekeeper')
           <div class="col-md-2 col-6 mb-4">
             <div class="text-center">
               <div class="avatar avatar-lg mx-auto mb-2">
@@ -61,6 +62,7 @@
               <h4 class="text-success">TZS {{ number_format($todaySummary['food_beverage'] ?? 0) }}</h4>
             </div>
           </div>
+          @endif
           <div class="col-md-2 col-6 mb-4">
             <div class="text-center">
               <div class="avatar avatar-lg mx-auto mb-2">
@@ -135,6 +137,7 @@
                   </div>
                 </td>
               </tr>
+              @if(auth()->user()->role !== 'storekeeper')
               <tr>
                 <td>Food & Beverage</td>
                 <td class="text-end">{{ number_format($monthlySummary['food_beverage'] ?? 0) }}</td>
@@ -144,6 +147,7 @@
                   </div>
                 </td>
               </tr>
+              @endif
               <tr class="table-dark">
                 <td><strong>Total Revenue</strong></td>
                 <td class="text-end"><strong>{{ number_format($monthlySummary['total'] ?? 0) }}</strong></td>
@@ -155,6 +159,7 @@
       </div>
     </div>
   </div>
+  @if(auth()->user()->role !== 'storekeeper')
   <div class="col-xl-4">
     <div class="card h-100">
       <div class="card-header">
@@ -180,6 +185,7 @@
       </div>
     </div>
   </div>
+  @endif
 </div>
 
 <!-- Quick Links -->
@@ -203,12 +209,14 @@
               Transaction Reports
             </a>
           </div>
+          @if(auth()->user()->role !== 'storekeeper')
           <div class="col-md-3 col-6">
             <a href="{{ route('reports.members') }}" class="btn btn-outline-success w-100 py-3">
               <i class="ri ri-user-line d-block mb-2" style="font-size: 24px;"></i>
               Member Reports
             </a>
           </div>
+          @endif
           <div class="col-md-3 col-6">
             <a href="{{ route('reports.daily-summary') }}" class="btn btn-outline-warning w-100 py-3">
               <i class="ri ri-calendar-line d-block mb-2" style="font-size: 24px;"></i>

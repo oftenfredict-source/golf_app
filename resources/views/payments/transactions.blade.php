@@ -350,7 +350,7 @@
           <select class="form-select filter-select" name="category">
             <option value="">All Categories</option>
             @php
-              $categories = ['driving_range', 'equipment_rental', 'equipment_sale', 'food_beverage', 'membership', 'other'];
+              $categories = ['driving_range', 'ball_management', 'equipment_rental', 'equipment_sale', 'food_beverage', 'membership', 'other'];
             @endphp
             @foreach($categories as $cat)
               <option value="{{ $cat }}" {{ request('category') === $cat ? 'selected' : '' }}>{{ ucfirst(str_replace('_', ' ', $cat)) }}</option>

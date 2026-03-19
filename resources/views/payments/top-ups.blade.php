@@ -76,28 +76,28 @@
               <span class="badge bg-label-primary rounded-pill">Real-time Data</span>
             </div>
             
-            <div class="row g-4">
-              <div class="col-sm-6 col-md-3">
-                <div class="p-3 border rounded bg-light-subtle h-100">
-                  <small class="text-muted d-block mb-1">Top-ups Today</small>
+            <div class="row g-3 g-md-4">
+              <div class="col-6 col-md-3">
+                <div class="p-2 p-md-3 border rounded bg-light-subtle h-100">
+                  <small class="text-muted d-block mb-1 small">Today</small>
                   <h4 class="mb-0 fw-bold" id="topupsToday">{{ number_format($stats['topups_today'] ?? 0) }}</h4>
                 </div>
               </div>
-              <div class="col-sm-6 col-md-3">
-                <div class="p-3 border border-success rounded bg-success-subtle h-100">
-                  <small class="text-success d-block mb-1">Amount Today</small>
-                  <h4 class="mb-0 fw-bold text-success fs-5" id="amountToday">TZS {{ number_format($stats['amount_today'] ?? 0) }}</h4>
+              <div class="col-6 col-md-3">
+                <div class="p-2 p-md-3 border border-success rounded bg-success-subtle h-100">
+                  <small class="text-success d-block mb-1 small">Amount</small>
+                  <h4 class="mb-0 fw-bold text-success fs-6 fs-md-5" id="amountToday">TZS {{ number_format($stats['amount_today'] ?? 0) }}</h4>
                 </div>
               </div>
-              <div class="col-sm-6 col-md-3">
-                <div class="p-3 border border-info rounded bg-info-subtle h-100">
-                  <small class="text-info d-block mb-1">Total Balance</small>
-                  <h4 class="mb-0 fw-bold text-info fs-5" id="totalBalance">TZS {{ number_format($stats['total_balance'] ?? 0) }}</h4>
+              <div class="col-6 col-md-3">
+                <div class="p-2 p-md-3 border border-info rounded bg-info-subtle h-100">
+                  <small class="text-info d-block mb-1 small">Balance</small>
+                  <h4 class="mb-0 fw-bold text-info fs-6 fs-md-5" id="totalBalance">TZS {{ number_format($stats['total_balance'] ?? 0) }}</h4>
                 </div>
               </div>
-              <div class="col-sm-6 col-md-3">
-                <div class="p-3 border border-warning rounded bg-warning-subtle h-100">
-                  <small class="text-warning d-block mb-1">Active Members</small>
+              <div class="col-6 col-md-3">
+                <div class="p-2 p-md-3 border border-warning rounded bg-warning-subtle h-100">
+                  <small class="text-warning d-block mb-1 small">Active</small>
                   <h4 class="mb-0 fw-bold text-warning" id="activeMembers">{{ number_format($stats['active_members'] ?? 0) }}</h4>
                 </div>
               </div>
@@ -140,16 +140,16 @@
 <!-- Main Operations Layout -->
 <div class="row">
   <!-- Recent History (Left) -->
-  <div class="col-md-8">
+  <div class="col-md-8 order-2 order-md-1">
     <div class="card border-0 shadow-sm h-100">
-      <div class="card-header bg-transparent border-bottom py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <div class="card-header bg-transparent border-bottom py-3 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
         <h5 class="mb-0 fw-bold text-primary"><i class="ri ri-history-line me-2"></i>Recent Top-ups</h5>
-        <div class="d-flex gap-2">
-          <div class="input-group input-group-sm" style="width: 220px;">
+        <div class="d-flex flex-column flex-sm-row gap-2 w-100 w-md-auto">
+          <div class="input-group input-group-sm w-100 w-sm-auto" style="min-width: 150px;">
             <span class="input-group-text bg-light border-end-0"><i class="ri ri-calendar-line text-muted"></i></span>
             <input type="date" class="form-control bg-light border-start-0 ps-0" id="filterDate" onchange="filterTopups()" value="{{ date('Y-m-d') }}">
           </div>
-          <div class="input-group input-group-sm" style="width: 180px;">
+          <div class="input-group input-group-sm w-100 w-sm-auto" style="min-width: 130px;">
             <span class="input-group-text bg-light border-end-0"><i class="ri ri-filter-3-line text-muted"></i></span>
             <select class="form-select bg-light border-start-0 ps-0" id="filterMethod" onchange="filterTopups()">
               <option value="">All Methods</option>
@@ -253,7 +253,7 @@
   </div>
 
   <!-- Top-up Processor (Right) -->
-  <div class="col-md-4">
+  <div class="col-md-4 order-1 order-md-2 mb-4 mb-md-0">
     <div class="card border-0 shadow-sm">
       <div class="card-header bg-primary text-white py-3">
         <h5 class="mb-0 text-white"><i class="ri ri-add-circle-line me-2"></i>Process New Top-up</h5>

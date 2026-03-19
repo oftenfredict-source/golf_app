@@ -11,7 +11,22 @@ class TransactionController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Transaction::with('member')->orderBy('created_at', 'desc');
+        $user = auth()->user();
+        $query = Transaction::with(['member', 'order'])->orderBy('created_at', 'desc');
+
+        // Counter specific filtering
+        if ($user->role === 'counter') {
+            $counter = \App\Models\Counter::where('assigned_user_id', $user->id)->first();
+            if ($counter) {
+                $query->where('reference_type', 'order')
+                      ->whereHas('order', function($q) use ($counter) {
+                          $q->where('counter_id', $counter->id);
+                      });
+            } else {
+                // If counter role but no counter assigned, show nothing
+                $query->whereRaw('1 = 0');
+            }
+        }
 
         // Date range filter
         if ($request->from_date) {
@@ -150,6 +165,18 @@ class TransactionController extends Controller
             $toDate . ' 23:59:59'
         ]);
 
+        if ($user->role === 'counter') {
+            $counter = \App\Models\Counter::where('assigned_user_id', $user->id)->first();
+            if ($counter) {
+                $statsQuery->where('reference_type', 'order')
+                           ->whereHas('order', function($q) use ($counter) {
+                               $q->where('counter_id', $counter->id);
+                           });
+            } else {
+                $statsQuery->whereRaw('1 = 0');
+            }
+        }
+
         if ($request->type) {
             $statsQuery->where('type', $request->type);
         }
@@ -203,7 +230,12 @@ class TransactionController extends Controller
                 if ($request->type === 'topup') {
                     $member->increment('balance', $request->amount);
                 } elseif ($request->type === 'payment') {
-                    $member->decrement('balance', $request->amount);
+                    if (!$member->safeDeduct($request->amount)) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Insufficient member balance. Required: TZS ' . number_format($request->amount) . ', Available: TZS ' . number_format($member->balance)
+                        ], 400);
+                    }
                 } elseif ($request->type === 'refund') {
                     $member->increment('balance', $request->amount);
                 }

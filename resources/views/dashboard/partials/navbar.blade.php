@@ -1,7 +1,7 @@
 <nav class="layout-navbar container-fluid navbar navbar-expand-xl align-items-center bg-navbar-theme" id="layout-navbar">
   <div class="layout-menu-toggle navbar-nav align-items-xl-center me-4 me-xl-0 d-xl-none">
-    <a class="nav-item nav-link px-0 me-xl-6" href="javascript:void(0)">
-      <i class="ri ri-menu-line ri-24px"></i>
+    <a class="nav-item nav-link px-2 me-xl-6" href="javascript:void(0)">
+      <i class="ri ri-menu-line" style="font-size: 32px !important;"></i>
     </a>
   </div>
 
@@ -85,8 +85,8 @@
           </li>
           <li>
             <a class="dropdown-item" href="{{ route('profile') }}">
-              <i class="ri ri-user-line me-2 ri-22px"></i>
-              <span class="align-middle">My Profile</span>
+              <i class="ri ri-user-settings-line me-2 ri-22px"></i>
+              <span class="align-middle">Account Settings</span>
             </a>
           </li>
           <li>

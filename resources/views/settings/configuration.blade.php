@@ -4,6 +4,38 @@
 @section('description', 'System Configuration - Golf Club Management System')
 
 @section('content')
+<style>
+    /* Responsive Tabs for Configuration */
+    .card-header-tabs {
+        flex-wrap: nowrap !important;
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 5px;
+    }
+    .card-header-tabs .nav-item {
+        white-space: nowrap;
+    }
+    
+    @media (max-width: 767.98px) {
+        .card-header-tabs {
+            margin-bottom: 0 !important;
+        }
+        .tab-content {
+            padding-top: 1rem;
+        }
+        .card-body {
+            padding: 1.25rem !important;
+        }
+        .card-body.p-4 {
+            padding: 1rem !important;
+        }
+        .btn-primary {
+            width: 100%;
+        }
+    }
+</style>
+
 <h4 class="fw-bold mb-4">
   <span class="text-muted fw-light">Settings /</span> System Configuration
 </h4>
@@ -157,8 +189,8 @@
               </div>
 
               <div class="mt-4">
-                <button type="submit" class="btn btn-primary">
-                  <i class="icon-base ri ri-save-line me-1"></i> Save Driving Range Configuration
+                <button type="submit" class="btn btn-primary d-flex align-items-center justify-content-center">
+                  <i class="icon-base ri ri-save-line me-1"></i> <span>Save Driving Range Configuration</span>
                 </button>
               </div>
             </form>
@@ -252,8 +284,8 @@
               </div>
 
               <div class="mt-4">
-                <button type="submit" class="btn btn-primary">
-                  <i class="icon-base ri ri-save-line me-1"></i> Save Equipment Rental Configuration
+                <button type="submit" class="btn btn-primary d-flex align-items-center justify-content-center">
+                  <i class="icon-base ri ri-save-line me-1"></i> <span>Save Equipment Rental Configuration</span>
                 </button>
               </div>
             </form>
@@ -361,8 +393,8 @@
               </div>
 
               <div class="mt-4">
-                <button type="submit" class="btn btn-primary">
-                  <i class="icon-base ri ri-save-line me-1"></i> Save Access Control Configuration
+                <button type="submit" class="btn btn-primary d-flex align-items-center justify-content-center">
+                  <i class="icon-base ri ri-save-line me-1"></i> <span>Save Access Control Configuration</span>
                 </button>
               </div>
             </form>

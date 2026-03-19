@@ -3,7 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\Counter;
+use App\Models\Order;
+use App\Models\Transaction;
+use App\Models\MenuCategory;
+use App\Models\MenuItem;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class CounterController extends Controller
 {
@@ -21,6 +26,7 @@ class CounterController extends Controller
             'type' => 'required|in:food,beverage,equipment,general,chakula,kahawa,jikoni',
             'tier' => 'nullable|in:normal,vip',
             'location' => 'nullable|string|max:255',
+            'is_alcohol' => 'boolean',
             'is_active' => 'boolean',
             'assigned_user_id' => 'nullable|exists:users,id',
         ]);
@@ -43,6 +49,7 @@ class CounterController extends Controller
             'type' => 'required|in:food,beverage,equipment,general,chakula,kahawa,jikoni',
             'tier' => 'nullable|in:normal,vip',
             'location' => 'nullable|string|max:255',
+            'is_alcohol' => 'boolean',
             'is_active' => 'boolean',
             'assigned_user_id' => 'nullable|exists:users,id',
         ]);
@@ -88,5 +95,70 @@ class CounterController extends Controller
             'message' => $message,
             'counter' => $counter->load('assignedUser')
         ]);
+    }
+
+    public function dashboard()
+    {
+        $user = Auth::user();
+        $counter = Counter::where('assigned_user_id', $user->id)->first();
+
+        if (!$counter) {
+            // Fallback: If no counter is assigned to this exact user, maybe they are admin?
+            // For now, let's just show a "Not Assigned" state in the view if $counter is null.
+        }
+
+        $activeOrders = [];
+        if ($counter) {
+            $activeOrders = Order::with(['items.menuItem', 'member'])
+                ->where('counter_id', $counter->id)
+                ->whereIn('status', ['saved', 'pending', 'preparing', 'ready'])
+                ->orderBy('created_at', 'desc')
+                ->get();
+        }
+
+        $stats = [
+            'orders_today' => $counter ? Order::where('counter_id', $counter->id)->today()->count() : 0,
+            'revenue_today' => $counter ? Transaction::today()->where('type', 'payment')->where('category', 'food_beverage')->where('reference_type', 'order')->whereIn('reference_id', Order::where('counter_id', $counter->id)->pluck('id'))->sum('amount') : 0,
+            'pending_count' => count($activeOrders),
+        ];
+
+        // Fetch Menu Categories and Items for POS
+        $categories = collect([]);
+        if ($counter) {
+            $categories = MenuCategory::with(['items' => function($q) {
+                $q->where('is_available', true);
+            }])
+            ->where(function($q) use ($counter) {
+                if ($counter->is_alcohol) {
+                    $q->where('is_alcohol', true);
+                } elseif ($counter->is_food) {
+                    $q->where('is_food', true);
+                } else {
+                    $q->where('is_alcohol', false)->where('is_food', false);
+                }
+            });
+
+            $categories = $categories->where('is_active', true)
+                ->orderBy('sort_order', 'asc')
+                ->get();
+
+            // If no category exists for this specialization, create a default one for this counter
+            if ($categories->isEmpty()) {
+                $defaultCategory = MenuCategory::create([
+                    'name' => $counter->name . ' Items',
+                    'is_alcohol' => $counter->is_alcohol,
+                    'status' => 'active',
+                    'is_active' => true,
+                    'sort_order' => 0
+                ]);
+                
+                // Re-fetch to include the new category
+                $categories = MenuCategory::where('id', $defaultCategory->id)
+                    ->with('items')
+                    ->get();
+            }
+        }
+
+        return view('services.counter-dashboard', compact('counter', 'activeOrders', 'stats', 'categories'));
     }
 }

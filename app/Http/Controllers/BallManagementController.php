@@ -4,13 +4,22 @@ namespace App\Http\Controllers;
 
 use App\Models\BallInventory;
 use App\Models\BallTransaction;
+use App\Models\BallCollector;
+use App\Models\BallCollectionLog;
+use App\Models\Member;
+use App\Models\Transaction;
 use App\Services\SmsService;
 use Illuminate\Http\Request;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
 
 class BallManagementController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        $fromDate = $request->from_date ? Carbon::parse($request->from_date) : Carbon::today();
+        $toDate = $request->to_date ? Carbon::parse($request->to_date) : Carbon::today();
+
         $inventory = BallInventory::first() ?? BallInventory::create([
             'ball_type' => 'standard',
             'total_quantity' => 5000,
@@ -20,13 +29,15 @@ class BallManagementController extends Controller
             'cost_per_ball' => 500
         ]);
         
-        $todayTransactions = BallTransaction::today()->orderBy('created_at', 'asc')->get();
+        $transactions = BallTransaction::inDateRange($fromDate, $toDate)
+            ->orderBy('created_at', 'asc')
+            ->get();
         
         // Group transactions into "sessions" based on issuance cycles
         $sessionsData = [];
         $activeSessions = []; // Track the latest session index for each customer
         
-        foreach ($todayTransactions as $txn) {
+        foreach ($transactions as $txn) {
             $customerKey = $txn->customer_name ?: 'System';
             
             // Start a new session on issued/purchased
@@ -42,7 +53,8 @@ class BallManagementController extends Controller
                     'last_txn_id' => $txn->id,
                     'type' => $txn->type,
                     'member_id' => $txn->member_id,
-                    'payment_method' => $txn->payment_method
+                    'payment_method' => $txn->payment_method,
+                    'designated_collector' => $txn->collector ? $txn->collector->name : ($txn->notes ? (str_contains($txn->notes, 'Collector:') ? trim(explode(':', $txn->notes)[1]) : null) : null)
                 ];
                 $sessionsData[] = $session;
                 $activeSessions[$customerKey] = count($sessionsData) - 1;
@@ -55,6 +67,9 @@ class BallManagementController extends Controller
                     $sessionsData[$idx]->remaining = max(0, $sessionsData[$idx]->issued - $sessionsData[$idx]->returned);
                     $sessionsData[$idx]->time_returned = $txn->created_at->format('H:i');
                     $sessionsData[$idx]->last_txn_id = $txn->id;
+                    if ($txn->collector_id) {
+                        $sessionsData[$idx]->returned_by = $txn->collector->name;
+                    }
                 } else {
                     // Return without an issuance record today
                     $session = (object)[
@@ -68,10 +83,10 @@ class BallManagementController extends Controller
                         'last_txn_id' => $txn->id,
                         'type' => $txn->type,
                         'member_id' => $txn->member_id,
-                        'payment_method' => null
+                        'payment_method' => null,
+                        'returned_by' => $txn->collector ? $txn->collector->name : null
                     ];
                     $sessionsData[] = $session;
-                    // We don't track this as an "active" session because it's already fulfilled/legacy
                 }
             }
         }
@@ -79,18 +94,34 @@ class BallManagementController extends Controller
         // Reverse for display (most recent issuance cycle at top)
         $ballSessions = array_reverse($sessionsData);
 
-        $members = \App\Models\Member::active()->orderBy('name')->get(); 
+        $members = Member::active()->orderBy('name')->get(); 
+        $collectors = BallCollector::where('status', 'active')->orderBy('name')->get();
         
+        $pendingCollections = BallCollectionLog::with('collector')
+            ->where('status', 'pending')
+            ->orderBy('created_at', 'asc')
+            ->get();
+
         $stats = [
             'total' => $inventory->total_quantity,
             'available' => $inventory->available_quantity,
             'in_use' => $inventory->in_use,
             'damaged' => $inventory->damaged,
-            'issued_today' => BallTransaction::today()->where('type', 'issued')->sum('quantity'),
-            'returned_today' => BallTransaction::today()->where('type', 'returned')->sum('quantity'),
+            'issued_today' => $transactions->where('type', 'issued')->sum('quantity'),
+            'returned_today' => $transactions->where('type', 'returned')->sum('quantity'),
         ];
 
-        return view('golf-services.ball-management', compact('inventory', 'todayTransactions', 'stats', 'members', 'ballSessions'));
+        return view('golf-services.ball-management', compact(
+            'inventory', 
+            'transactions', 
+            'stats', 
+            'members', 
+            'collectors',
+            'ballSessions',
+            'pendingCollections',
+            'fromDate',
+            'toDate'
+        ));
     }
 
     public function issue(Request $request)
@@ -99,6 +130,7 @@ class BallManagementController extends Controller
             'quantity' => 'required|integer|min:1',
             'customer_name' => 'required|string',
             'payment_method' => 'required|in:cash,card,mobile_money,balance',
+            'collector_id' => 'required|exists:ball_collectors,id',
         ]);
 
         $inventory = BallInventory::first();
@@ -110,66 +142,90 @@ class BallManagementController extends Controller
         // Calculate amount based on quantity and cost per ball
         $amount = $request->quantity * $inventory->cost_per_ball;
 
-        // Handle member balance payment if applicable
+        // User Rule: Cardholders (has_full_access=1) MUST pay by balance.
+        // Custom/Walk-ins can pay by cash.
+        if ($request->member_id) {
+            $member = Member::find($request->member_id);
+            if ($member && $member->requiresBalancePayment() && $request->payment_method !== 'balance') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Members with issued cards must pay using their card balance. Please select "Balance" as the payment method.'
+                ], 400);
+            }
+        }
+
+        $member = null;
+        $balanceBefore = 0;
+        $balanceAfter = 0;
+
         if ($request->payment_method === 'balance' && $request->member_id) {
-            $member = \App\Models\Member::find($request->member_id);
+            $member = Member::find($request->member_id);
             if (!$member) {
                 return response()->json(['success' => false, 'message' => 'Member not found'], 400);
             }
             
-            if ($member->balance < $amount) {
+            // Strictly enforce balance check using central method
+            $balanceBefore = $member->balance;
+            if (!$member->safeDeduct($amount)) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Insufficient balance. Required: TZS ' . number_format($amount) . ', Available: TZS ' . number_format($member->balance)
                 ], 400);
             }
-            
-            $balanceBefore = $member->balance;
-            $member->decrement('balance', $amount);
-            $balanceAfter = $member->fresh()->balance;
-            
-            // Create transaction record
-            \App\Models\Transaction::create([
-                'transaction_id' => \App\Models\Transaction::generateTransactionId(),
-                'member_id' => $member->id,
-                'customer_name' => $member->name,
-                'type' => 'payment',
-                'category' => 'ball_management',
-                'amount' => $amount,
-                'balance_before' => $balanceBefore,
-                'balance_after' => $balanceAfter,
-                'payment_method' => 'balance',
-                'reference_type' => 'ball_transaction',
-                'status' => 'completed',
-            ]);
+            $balanceAfter = $member->balance;
         }
 
         $inventory->decrement('available_quantity', $request->quantity);
         $inventory->increment('in_use', $request->quantity);
+
+        // Create ball transaction record
+        $memberId = $request->member_id ?: null;
 
         $transaction = BallTransaction::create([
             'type' => 'issued',
             'quantity' => $request->quantity,
             'customer_name' => $request->customer_name,
             'customer_phone' => $request->customer_phone,
-            'member_id' => $request->member_id,
+            'member_id' => $memberId,
             'session_id' => $request->session_id,
             'notes' => $request->notes,
             'amount' => $amount,
             'payment_method' => $request->payment_method,
         ]);
+
+        // Create Ball Collection Log automatically
+        BallCollectionLog::create([
+            'collector_id' => $request->collector_id,
+            'ball_transaction_id' => $transaction->id,
+            'target_quantity' => $request->quantity,
+            'quantity_collected' => 0,
+            'status' => 'pending',
+            'assigned_by' => Auth::id(),
+            'collected_at' => null, // Will be set during actual field return
+        ]);
+
+        // Create general ledger transaction record for all payment methods
+        Transaction::create([
+            'transaction_id' => Transaction::generateTransactionId(),
+            'member_id' => $memberId,
+            'customer_name' => $request->customer_name,
+            'type' => 'payment',
+            'category' => 'ball_management',
+            'amount' => $amount,
+            'balance_before' => $balanceBefore,
+            'balance_after' => $balanceAfter,
+            'payment_method' => $request->payment_method,
+            'reference_type' => 'ball_transaction',
+            'reference_id' => $transaction->id,
+            'status' => 'completed',
+        ]);
         
         $smsSent = false;
-        if ($request->payment_method === 'balance' && isset($balanceAfter)) {
-            \App\Models\Transaction::where('reference_type', 'ball_transaction')
-                ->whereNull('reference_id')
-                ->latest()
-                ->first()
-                ->update(['reference_id' => $transaction->id]);
+        if ($request->payment_method === 'balance' && $member) {
             
             // Send SMS notification for deduction if member
             if ($request->member_id) {
-                $member = \App\Models\Member::find($request->member_id);
+                $member = Member::find($request->member_id);
                 if ($member) {
                     $smsService = new SmsService();
                     $smsResult = $smsService->sendPaymentNotification($member, $amount, $balanceAfter, 'Ball Purchase');
@@ -179,14 +235,14 @@ class BallManagementController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Balls issued successfully. Amount: TZS ' . number_format($amount) . '. New balance: TZS ' . number_format($balanceAfter),
+                'message' => 'Balls issued successfully. Amount: TZS ' . number_format((float)$amount) . '. New balance: TZS ' . number_format((float)$balanceAfter),
                 'sms_sent' => $smsSent
             ]);
         }
 
         return response()->json([
             'success' => true,
-            'message' => 'Balls issued successfully. Amount: TZS ' . number_format($amount)
+            'message' => 'Balls issued successfully. Amount: TZS ' . number_format((float)$amount)
         ]);
     }
 
@@ -195,19 +251,48 @@ class BallManagementController extends Controller
         $request->validate([
             'customer_name' => 'required|string',
             'quantity' => 'required|integer|min:1',
+            'collector_id' => 'nullable|exists:ball_collectors,id',
         ]);
 
         $inventory = BallInventory::first();
         
         $inventory->increment('available_quantity', $request->quantity);
-        $inventory->decrement('in_use', $request->quantity);
+        $inventory->decrement('in_use', min($inventory->in_use, $request->quantity));
+
+        // Find the member if possible for better tracking
+        $member = Member::where('name', $request->customer_name)->first();
 
         BallTransaction::create([
             'type' => 'returned',
             'quantity' => $request->quantity,
             'customer_name' => $request->customer_name,
+            'member_id' => $member ? $member->id : null,
+            'collector_id' => $request->collector_id,
             'notes' => $request->notes,
         ]);
+
+        // Find and close any pending collection logs for this customer/collector
+        $query = BallCollectionLog::where('status', 'pending');
+        
+        // Match by customer name through the original transaction
+        $query->whereHas('ballTransaction', function($q) use ($request) {
+            $q->where('customer_name', $request->customer_name);
+        });
+        
+        // If a collector was specified in the return, prioritize matching that collector
+        if ($request->collector_id) {
+            $query->where('collector_id', $request->collector_id);
+        }
+        
+        $pendingLogs = $query->get();
+        
+        foreach ($pendingLogs as $log) {
+            $log->update([
+                'status' => 'verified',
+                'quantity_collected' => $request->quantity,
+                'verified_at' => now(),
+            ]);
+        }
 
         return response()->json(['success' => true, 'message' => 'Balls returned successfully']);
     }
@@ -376,7 +461,7 @@ class BallManagementController extends Controller
                     ], 400);
                 }
                 $inventory->increment('available_quantity', $quantityDiff);
-                $inventory->decrement('in_use', $quantityDiff);
+                $inventory->decrement('in_use', min($inventory->in_use, $quantityDiff));
             } elseif ($quantityDiff < 0) {
                 // Decreasing return quantity - move back to in_use
                 $inventory->decrement('available_quantity', abs($quantityDiff));

@@ -168,12 +168,12 @@
     <div class="col-lg-8">
       <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
         <div class="card-header border-bottom bg-white py-3">
-          <div class="d-flex justify-content-between align-items-center">
+          <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
             <div>
               <h5 class="mb-0 fw-bold"><i class="ri-group-line me-2 text-primary"></i>Member Registry</h5>
               <small class="text-muted">Select a member to issue or update their card</small>
             </div>
-            <div class="premium-input-group d-flex align-items-center px-3" style="min-width: 300px;">
+            <div class="premium-input-group d-flex align-items-center px-3 w-100 w-md-auto" style="min-width: 100%; max-width: 400px; min-width: 250px;">
               <i class="ri-search-line text-muted me-2"></i>
               <input type="text" id="memberSearchInput" class="form-control border-0 bg-transparent p-1" placeholder="Search by name or card...">
             </div>

@@ -257,6 +257,12 @@
 
             <div class="card-body mt-1">
               
+              @if (session('success'))
+                <div class="alert alert-success mb-4">
+                  <i class="ri ri-check-circle-line me-2"></i>{{ session('success') }}
+                </div>
+              @endif
+
               @if ($errors->any())
                 <div id="errorAlert" class="alert alert-danger mb-4">
                   <ul class="mb-0">
@@ -308,7 +314,7 @@
                     <input class="form-check-input" type="checkbox" id="remember-me" name="remember" />
                     <label class="form-check-label" for="remember-me"> Remember Me </label>
                   </div>
-                  <a href="#" class="float-end mb-1">
+                  <a href="{{ route('password.forgot') }}" class="float-end mb-1">
                     <span>Forgot Password?</span>
                   </a>
                 </div>

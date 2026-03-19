@@ -1,7 +1,7 @@
 @extends('settings._layout-base')
 
-@section('title', 'Profile')
-@section('description', 'My Profile - Golf Club Management System')
+@section('title', 'Account Settings')
+@section('description', 'Update your password and phone number - Golf Club Management System')
 
 @php
   $user = Auth::user();
@@ -9,7 +9,7 @@
 
 @section('content')
 <h4 class="fw-bold mb-4">
-  <span class="text-muted fw-light">Account /</span> My Profile
+  <span class="text-muted fw-light">User /</span> Account Settings
 </h4>
 
 @if(session('success'))
@@ -92,6 +92,7 @@
                 'admin' => ['All Access', 'User Management', 'Reports', 'Settings', 'Transactions', 'Members'],
                 'manager' => ['Reports', 'Transactions', 'Members', 'Inventory'],
                 'cashier' => ['Transactions', 'Top-ups', 'POS'],
+                'ball_manager' => ['Ball Inventory', 'Issue Balls', 'Return Balls'],
                 'staff' => ['View Dashboard', 'Basic Operations'],
               ];
               $userRole = $user->role ?? 'staff';
@@ -106,7 +107,7 @@
           <label class="form-label fw-semibold">Access Level</label>
           <div class="progress" style="height: 10px;">
             @php
-              $accessLevels = ['staff' => 25, 'cashier' => 50, 'manager' => 75, 'admin' => 100];
+              $accessLevels = ['staff' => 25, 'ball_manager' => 30, 'cashier' => 50, 'manager' => 75, 'admin' => 100];
               $accessLevel = $accessLevels[$userRole] ?? 25;
             @endphp
             <div class="progress-bar bg-primary" style="width: {{ $accessLevel }}%"></div>
@@ -122,7 +123,7 @@
     <!-- Account Details -->
     <div class="card mb-4">
       <div class="card-header" style="background: linear-gradient(135deg, #940000 0%, #b30000 100%); color: white;">
-        <h5 class="mb-0 text-white"><i class="icon-base ri ri-user-line me-2"></i>Account Details</h5>
+        <h5 class="mb-0 text-white"><i class="icon-base ri ri-user-settings-line me-2"></i>Personal Information</h5>
       </div>
       <div class="card-body">
         <form action="{{ route('profile.update') }}" method="POST">
@@ -149,8 +150,8 @@
             </div>
             <div class="col-md-6 mb-4">
               <div class="form-floating form-floating-outline">
-                <input type="tel" class="form-control @error('phone') is-invalid @enderror" id="phone" name="phone" value="{{ old('phone', $user->phone ?? '') }}" placeholder="Phone Number" />
-                <label for="phone">Phone Number</label>
+                <input type="tel" class="form-control @error('phone') is-invalid @enderror" id="phone" name="phone" value="{{ old('phone', $user->phone ?? '') }}" placeholder="Phone Number" required />
+                <label for="phone">Phone Number *</label>
                 @error('phone')
                   <div class="invalid-feedback">{{ $message }}</div>
                 @enderror
@@ -285,31 +286,6 @@
       </div>
     </div>
     
-    <!-- Account Actions -->
-    <div class="card">
-      <div class="card-header">
-        <h5 class="mb-0"><i class="icon-base ri ri-settings-3-line me-2"></i>Quick Actions</h5>
-      </div>
-      <div class="card-body">
-        <div class="d-flex flex-wrap gap-2">
-          <a href="{{ route('settings.organization') }}" class="btn btn-outline-primary">
-            <i class="icon-base ri ri-building-line me-1"></i> Organization Settings
-          </a>
-          <a href="{{ route('settings.communication') }}" class="btn btn-outline-info">
-            <i class="icon-base ri ri-mail-line me-1"></i> Communication Settings
-          </a>
-          <a href="{{ route('logs.activity-logs') }}" class="btn btn-outline-secondary">
-            <i class="icon-base ri ri-file-list-line me-1"></i> Activity Logs
-          </a>
-          <form action="{{ route('logout') }}" method="POST" class="d-inline">
-            @csrf
-            <button type="submit" class="btn btn-outline-danger">
-              <i class="icon-base ri ri-logout-box-line me-1"></i> Logout
-            </button>
-          </form>
-        </div>
-      </div>
-    </div>
   </div>
 </div>
 

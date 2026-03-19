@@ -8,7 +8,13 @@ use App\Traits\HasUlidRouteKey;
 class MenuCategory extends Model
 {
     use HasUlidRouteKey;
-    protected $fillable = ['name', 'description', 'sort_order', 'status', 'is_active'];
+    protected $fillable = ['name', 'description', 'sort_order', 'is_alcohol', 'is_food', 'status', 'is_active'];
+
+    protected $casts = [
+        'is_active' => 'boolean',
+        'is_alcohol' => 'boolean',
+        'is_food' => 'boolean',
+    ];
 
     public function items()
     {

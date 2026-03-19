@@ -1517,7 +1517,7 @@ function quickExit(cardNumber, memberId, btn) {
   if (!gateId) {
     btn.disabled = false;
     btn.innerHTML = '<i class="icon-base ri ri-logout-box-r-line me-1"></i>Exit';
-    alert('No active gate found. Please configure a gate first.');
+    showError('No active gate found. Please configure a gate first.');
     return;
   }
 
@@ -1549,14 +1549,14 @@ function quickExit(cardNumber, memberId, btn) {
     } else {
       btn.disabled = false;
       btn.innerHTML = '<i class="icon-base ri ri-logout-box-r-line me-1"></i>Exit';
-      alert('Exit failed: ' + (data.message || 'Unknown error'));
+      showError('Exit failed: ' + (data.message || 'Unknown error'));
     }
   })
   .catch(err => {
     console.error('Quick exit error:', err);
     btn.disabled = false;
     btn.innerHTML = '<i class="icon-base ri ri-logout-box-r-line me-1"></i>Exit';
-    alert('Network error. Please try again.');
+    showError('Network error. Please try again.');
   });
 }
 
@@ -1565,7 +1565,7 @@ function scanCard() {
   const selectedMemberId = selectedMemberIdEl ? selectedMemberIdEl.value : null;
   const cardInput = document.getElementById('cardNumber');
   if (!cardInput) {
-    alert('Card input not found');
+    showError('Card input not found');
     return;
   }
   const cardNumber = cardInput.getAttribute('data-card-number') || cardInput.value.trim();
@@ -1575,17 +1575,17 @@ function scanCard() {
   const scanType = scanTypeEl ? scanTypeEl.value : 'entry';
   
   if (!cardNumber) {
-    alert('Please search and select a member from the dropdown');
+    showWarning('Please search and select a member from the dropdown');
     return;
   }
   
   if (!selectedMemberId) {
-    alert('Please select a member from the dropdown list. No member was selected.');
+    showWarning('Please select a member from the dropdown list. No member was selected.');
     return;
   }
   
   if (!gateId) {
-    alert('Please select a gate');
+    showWarning('Please select a gate');
     return;
   }
   
@@ -1727,13 +1727,13 @@ function saveGate(e) {
       }
     } else {
       if (btn) { btn.disabled = false; btn.innerHTML = origText; }
-      alert('Error: ' + (data.message || JSON.stringify(data.errors) || 'Failed to save gate'));
+      showError('Error: ' + (data.message || JSON.stringify(data.errors) || 'Failed to save gate'));
     }
   })
   .catch(err => {
     if (btn) { btn.disabled = false; btn.innerHTML = origText; }
     console.error('Save error:', err);
-    alert('Error saving gate: ' + (err.message || 'Please check console for details'));
+    showError('Error saving gate: ' + (err.message || 'Please check console for details'));
   });
 }
 
@@ -1782,12 +1782,12 @@ function updateGate(e) {
       modal.hide();
       location.reload();
     } else {
-      alert('Error: ' + (data.message || 'Failed to update gate'));
+      showError('Error: ' + (data.message || 'Failed to update gate'));
     }
   })
   .catch(err => {
     console.error('Update error:', err);
-    alert('Error updating gate. Please try again.');
+    showError('Error updating gate. Please try again.');
   });
 }
 
@@ -1805,62 +1805,72 @@ function toggleGate(id) {
     if (data.success) {
       location.reload();
     } else {
-      alert('Error: ' + (data.message || 'Failed to toggle gate'));
+      showError('Error: ' + (data.message || 'Failed to toggle gate'));
     }
   })
   .catch(err => {
     console.error('Toggle error:', err);
-    alert('Error toggling gate. Please try again.');
+    showError('Error toggling gate. Please try again.');
   });
 }
 
 function deleteGate(id) {
-  if (!confirm('Are you sure you want to delete this gate? This action cannot be undone.')) return;
-  
-  fetch(`{{ route("access-control.entry-gates.destroy", ":id") }}`.replace(':id', id), {
-    method: 'DELETE',
-    headers: {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      'X-CSRF-TOKEN': '{{ csrf_token() }}'
+  showConfirm('Are you sure you want to delete this gate? This action cannot be undone.', 'Delete Gate', 'Yes, Delete', 'Cancel').then((result) => {
+    if (result.isConfirmed) {
+      fetch(`{{ route("access-control.entry-gates.destroy", ":id") }}`.replace(':id', id), {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        }
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          location.reload();
+        } else {
+          showError('Error: ' + (data.message || 'Failed to delete gate'));
+        }
+      })
+      .catch(err => {
+        console.error('Delete error:', err);
+        showError('Error deleting gate. Please try again.');
+      });
     }
-  })
-  .then(r => r.json())
-  .then(data => {
-    if (data.success) {
-      location.reload();
-    } else {
-      alert('Error: ' + (data.message || 'Failed to delete gate'));
-    }
-  })
-  .catch(err => {
-    console.error('Delete error:', err);
-    alert('Error deleting gate. Please try again.');
   });
 }
 
 function openAllGates() {
-  if (confirm('Open all gates? This will allow unrestricted access for 5 minutes.')) {
-    updateGlobalMode('open', 5);
-  }
+  showConfirm('Open all gates? This will allow unrestricted access for 5 minutes.', 'Admin Override', 'Open All', 'Cancel').then((result) => {
+    if (result.isConfirmed) {
+      updateGlobalMode('open', 5);
+    }
+  });
 }
 
 function closeAllGates() {
-  if (confirm('Lock all gates? This will prevent all access until manually reset to Normal.')) {
-    updateGlobalMode('locked');
-  }
+  showConfirm('Lock all gates? This will prevent all access until manually reset to Normal.', 'System Lockdown', 'Lock All', 'Cancel').then((result) => {
+    if (result.isConfirmed) {
+      updateGlobalMode('locked');
+    }
+  });
 }
 
 function emergencyMode() {
-  if (confirm('Activate EMERGENCY MODE? All gates will open immediately for evacuation.')) {
-    updateGlobalMode('emergency');
-  }
+  showConfirm('Activate EMERGENCY MODE? All gates will open immediately for evacuation.', 'EMERGENCY OVERRIDE', 'Activate Emergency', 'Cancel').then((result) => {
+    if (result.isConfirmed) {
+      updateGlobalMode('emergency');
+    }
+  });
 }
 
 function resetToNormal() {
-  if (confirm('Return system to Normal Mode? Access rules will be reapplied.')) {
-    updateGlobalMode('normal');
-  }
+  showConfirm('Return system to Normal Mode? Access rules will be reapplied.', 'Reset System', 'Reset to Normal', 'Cancel').then((result) => {
+    if (result.isConfirmed) {
+      updateGlobalMode('normal');
+    }
+  });
 }
 
 function updateGlobalMode(mode, duration = null) {
@@ -1876,21 +1886,21 @@ function updateGlobalMode(mode, duration = null) {
   .then(r => r.json())
   .then(data => {
     if (data.success) {
-      alert(data.message);
+      showSuccess(data.message);
       location.reload();
     } else {
-      alert('Error: ' + (data.message || 'Failed to update system mode'));
+      showError('Error: ' + (data.message || 'Failed to update system mode'));
     }
   })
   .catch(err => {
     console.error('Global mode error:', err);
-    alert('Error updating system mode. Please try again.');
+    showError('Error updating system mode. Please try again.');
   });
 }
 
 
 function viewAllLogs() {
-  alert('Advanced logs view coming soon!');
+  showInfo('Advanced logs view coming soon!');
 }
 
 // GET ENTER function - retrieve member info without logging
@@ -1899,18 +1909,18 @@ function getEnter() {
   const selectedMemberId = selectedMemberIdEl ? selectedMemberIdEl.value : null;
   const cardInput = document.getElementById('cardNumber');
   if (!cardInput) {
-    alert('Card input not found');
+    showError('Card input not found');
     return;
   }
   const cardNumber = cardInput.getAttribute('data-card-number') || cardInput.value.trim();
   
   if (!cardNumber) {
-    alert('Please search and select a member from the dropdown');
+    showWarning('Please search and select a member from the dropdown');
     return;
   }
   
   if (!selectedMemberId) {
-    alert('Please select a member from the dropdown list.');
+    showWarning('Please select a member from the dropdown list.');
     return;
   }
   
@@ -2010,18 +2020,18 @@ function showBalance() {
   const selectedMemberId = selectedMemberIdEl ? selectedMemberIdEl.value : null;
   const cardInput = document.getElementById('cardNumber');
   if (!cardInput) {
-    alert('Card input not found');
+    showError('Card input not found');
     return;
   }
   const cardNumber = cardInput.getAttribute('data-card-number') || cardInput.value.trim();
   
   if (!cardNumber) {
-    alert('Please search and select a member from the dropdown');
+    showWarning('Please search and select a member from the dropdown');
     return;
   }
   
   if (!selectedMemberId) {
-    alert('Please select a member from the dropdown list.');
+    showWarning('Please select a member from the dropdown list.');
     return;
   }
   
@@ -2144,13 +2154,13 @@ function scanCardFromModal() {
   const selectedMemberId = modalSelectedMemberId ? modalSelectedMemberId.value : null;
   
   if (!cardNumber || cardNumber.length < 1) {
-    alert('Please enter or select a member (card number, member ID, or name)');
+    showWarning('Please enter or select a member (card number, member ID, or name)');
     modalCardInput.focus();
     return;
   }
   
   if (!gateId) {
-    alert('Please select a gate');
+    showWarning('Please select a gate');
     document.getElementById('modalScanGate').focus();
     return;
   }

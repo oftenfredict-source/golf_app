@@ -123,9 +123,11 @@ window.editMember = editMember;
             <div class="d-flex justify-content-between align-items-center mb-3">
               <h5 class="mb-0 fw-bold"><i class="ri ri-team-line me-2 text-primary"></i>Member Overview</h5>
               <div class="d-flex gap-2">
+                @if(auth()->user()->role !== 'storekeeper')
                 <a href="{{ route('payments.generate-card') }}" class="btn btn-sm btn-outline-secondary">
                   <i class="ri ri-qr-code-line me-1"></i> Generate Card
                 </a>
+                @endif
                 <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#newUPIModal">
                   <i class="ri ri-user-add-line me-1"></i> Register Member
                 </button>
@@ -157,28 +159,28 @@ window.editMember = editMember;
               </div>
             </div>
 
-            <div class="row g-4">
-              <div class="col-md-3">
-                <div class="p-3 border rounded bg-light-subtle">
-                  <small class="text-muted d-block mb-1">Total Members</small>
+            <div class="row g-3 g-md-4">
+              <div class="col-6 col-md-3">
+                <div class="p-2 p-md-3 border rounded bg-light-subtle h-100">
+                  <small class="text-muted d-block mb-1 small">Total Members</small>
                   <h4 class="mb-0 fw-bold">{{ number_format($statTotal) }}</h4>
                 </div>
               </div>
-              <div class="col-md-3">
-                <div class="p-3 border border-success rounded bg-success-subtle">
-                  <small class="text-success d-block mb-1">Active</small>
+              <div class="col-6 col-md-3">
+                <div class="p-2 p-md-3 border border-success rounded bg-success-subtle h-100">
+                  <small class="text-success d-block mb-1 small">Active</small>
                   <h4 class="mb-0 fw-bold">{{ number_format($statActive) }}</h4>
                 </div>
               </div>
-              <div class="col-md-3">
-                <div class="p-3 border border-dark rounded" style="background:#f8f8f8;">
-                  <small class="text-muted d-block mb-1">VIP</small>
+              <div class="col-6 col-md-3">
+                <div class="p-2 p-md-3 border border-dark rounded h-100" style="background:#f8f8f8;">
+                  <small class="text-muted d-block mb-1 small">VIP</small>
                   <h4 class="mb-0 fw-bold">{{ number_format($statVip) }}</h4>
                 </div>
               </div>
-              <div class="col-md-3">
-                <div class="p-3 border border-warning rounded bg-warning-subtle text-warning">
-                  <small class="d-block mb-1">Premier</small>
+              <div class="col-6 col-md-3">
+                <div class="p-2 p-md-3 border border-warning rounded bg-warning-subtle text-warning h-100">
+                  <small class="d-block mb-1 small">Premier</small>
                   <h4 class="mb-0 fw-bold">{{ number_format($statPremier) }}</h4>
                 </div>
               </div>
@@ -209,7 +211,7 @@ window.editMember = editMember;
             <div class="pt-2">
               <div class="alert bg-white text-primary border-0 mb-0 py-3">
                 <small class="d-block fw-semibold mb-1">Total Collective Balance</small>
-                <h4 class="mb-0 fw-bold">TZS {{ number_format($stats['total_balance'] ?? 0, 0) }}</h4>
+                <h4 class="mb-0 fw-bold fs-5 fs-md-4">TZS {{ number_format($stats['total_balance'] ?? 0, 0) }}</h4>
               </div>
             </div>
           </div>
@@ -228,19 +230,21 @@ window.editMember = editMember;
     <div class="card border-0 shadow-sm">
 
       {{-- Table header --}}
-      <div class="card-header d-flex justify-content-between align-items-center py-3" style="background: linear-gradient(135deg, #940000 0%, #b30000 100%);">
+      <div class="card-header d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 py-3" style="background: linear-gradient(135deg, #940000 0%, #b30000 100%);">
         <div class="d-flex align-items-center gap-3">
           <h5 class="mb-0 text-white fw-bold"><i class="ri ri-bank-card-line me-2"></i>Member Cards Directory</h5>
           <span class="badge bg-white text-danger fw-bold">{{ $members->total() }} members</span>
         </div>
-        <div class="d-flex gap-2">
-          <a href="{{ route('payments.upi-management', array_merge(request()->all(), ['export' => '1'])) }}" class="btn btn-sm btn-outline-light">
+        <div class="d-flex flex-wrap gap-2">
+          <a href="{{ route('payments.upi-management', array_merge(request()->all(), ['export' => '1'])) }}" class="btn btn-xs btn-md-sm btn-outline-light">
             <i class="ri ri-download-line me-1"></i>Export
           </a>
-          <a href="{{ route('payments.generate-card') }}" class="btn btn-sm btn-outline-light">
+          @if(auth()->user()->role !== 'storekeeper')
+          <a href="{{ route('payments.generate-card') }}" class="btn btn-xs btn-md-sm btn-outline-light">
             <i class="ri ri-qr-code-line me-1"></i>ID Cards
           </a>
-          <button class="btn btn-sm btn-light fw-bold" data-bs-toggle="modal" data-bs-target="#newUPIModal">
+          @endif
+          <button class="btn btn-xs btn-md-sm btn-light fw-bold" data-bs-toggle="modal" data-bs-target="#newUPIModal">
             <i class="ri ri-user-add-line me-1"></i>Register Member
           </button>
         </div>
@@ -251,7 +255,7 @@ window.editMember = editMember;
         <form method="GET" action="{{ route('payments.upi-management') }}" id="filterForm">
           <div class="row g-2 align-items-center">
             {{-- Search --}}
-            <div class="col-md-4">
+            <div class="col-12 col-md-4">
               <div class="input-group shadow-sm">
                 <span class="input-group-text bg-white border-end-0">
                   <i class="ri ri-search-2-line text-muted"></i>
@@ -267,7 +271,7 @@ window.editMember = editMember;
               </div>
             </div>
             {{-- Status --}}
-            <div class="col-md-2">
+            <div class="col-6 col-md-2">
               <select class="form-select form-select-sm" name="status" onchange="this.form.submit()">
                 <option value="">All Status</option>
                 <option value="active" {{ request('status') == 'active' ? 'selected' : '' }}>Active</option>
@@ -277,7 +281,7 @@ window.editMember = editMember;
               </select>
             </div>
             {{-- Membership --}}
-            <div class="col-md-2">
+            <div class="col-6 col-md-2">
               <select class="form-select form-select-sm" name="membership_type" onchange="this.form.submit()">
                 <option value="">All Types</option>
                 <option value="standard" {{ request('membership_type') == 'standard' ? 'selected' : '' }}>Standard</option>
@@ -286,7 +290,7 @@ window.editMember = editMember;
               </select>
             </div>
             {{-- Tier Filter (Full vs Golf) --}}
-            <div class="col-md-2">
+            <div class="col-6 col-md-2">
               <select class="form-select form-select-sm" name="tier" onchange="this.form.submit()">
                 <option value="">All Tiers</option>
                 <option value="1" {{ request('tier') === '1' ? 'selected' : '' }}>Full Access</option>
@@ -294,7 +298,7 @@ window.editMember = editMember;
               </select>
             </div>
             {{-- Sort --}}
-            <div class="col-md-2">
+            <div class="col-6 col-md-2">
               <select class="form-select form-select-sm" name="sort_by" onchange="this.form.submit()">
                 <option value="created_at" {{ request('sort_by') == 'created_at' ? 'selected' : '' }}>Newest First</option>
                 <option value="name" {{ request('sort_by') == 'name' ? 'selected' : '' }}>Name A–Z</option>
@@ -303,13 +307,10 @@ window.editMember = editMember;
               </select>
             </div>
             {{-- Submit --}}
-            <div class="col-md-2 d-flex gap-2">
-              <button type="submit" class="btn btn-primary btn-sm flex-fill fw-bold">
-                <i class="ri ri-search-line me-1"></i>Search
+            <div class="col-12 d-md-none mt-2">
+              <button type="submit" class="btn btn-primary w-100 fw-bold">
+                <i class="ri ri-search-line me-1"></i>Apply Filters
               </button>
-              <a href="{{ route('payments.upi-management') }}" class="btn btn-outline-secondary btn-sm" title="Reset all filters">
-                <i class="ri ri-refresh-line"></i>
-              </a>
             </div>
           </div>
         </form>
@@ -484,21 +485,25 @@ window.editMember = editMember;
                 {{-- Actions: Top-up button + overflow dropdown --}}
                 <td class="pe-4 py-3">
                   <div class="d-flex align-items-center gap-1">
+                    @if(auth()->user()->role !== 'storekeeper')
                     <button class="btn btn-sm btn-success fw-bold px-2"
                             onclick="topupBalance({{ $member->id }}, {{ json_encode($member->name) }}, {{ $member->balance }})">
                       <i class="ri ri-add-circle-line me-1"></i>Top-up
                     </button>
+                    @endif
                     <div class="dropdown">
                       <button class="btn btn-sm btn-outline-secondary px-2" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="ri ri-more-2-line"></i>
                       </button>
                       <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 py-1" style="min-width:170px;">
+                        @if(auth()->user()->role === 'admin')
                         <li>
                           <a class="dropdown-item py-2 d-flex align-items-center gap-2" href="#"
                              onclick="adjustBalance({{ $member->id }}, {{ json_encode($member->name) }}, {{ $member->balance }}); return false;">
                             <i class="ri ri-edit-line text-info fs-6"></i><span>Adjust Balance</span>
                           </a>
                         </li>
+                        @endif
                         <li>
                           <a class="dropdown-item py-2 d-flex align-items-center gap-2" href="#"
                              onclick="viewMemberTransactions({{ $member->id }}, {{ json_encode($member->name) }}); return false;">
@@ -582,14 +587,14 @@ window.editMember = editMember;
             <h6 class="fw-bold mb-3"><i class="ri ri-id-card-line me-1"></i> Selection of Member Tier *</h6>
             <div class="row g-3">
               <div class="col-md-6">
-                <div class="form-check custom-option custom-option-icon border rounded p-3">
+                <div class="form-check custom-option custom-option-icon border rounded p-3 {{ auth()->user()->role === 'storekeeper' ? 'opacity-50 cursor-not-allowed' : '' }}">
                   <label class="form-check-label custom-option-content" for="tier_full_access">
                     <span class="custom-option-body">
                       <i class="ri ri-bank-card-line icon-24px mb-2 text-primary"></i>
                       <span class="custom-option-title d-block fw-bold mb-1">Cardholder Member</span>
                       <small>Full Access to all services including F&B and VIP Gates.</small>
                     </span>
-                    <input name="has_full_access" class="form-check-input" type="radio" value="1" id="tier_full_access" checked />
+                    <input name="has_full_access" class="form-check-input" type="radio" value="1" id="tier_full_access" {{ auth()->user()->role === 'storekeeper' ? 'disabled' : 'checked' }} />
                   </label>
                 </div>
               </div>
@@ -601,11 +606,16 @@ window.editMember = editMember;
                       <span class="custom-option-title d-block fw-bold mb-1">Custom Member</span>
                       <small>Golf Only. Access restricted to golf gates. No card issued.</small>
                     </span>
-                    <input name="has_full_access" class="form-check-input" type="radio" value="0" id="tier_golf_only" />
+                    <input name="has_full_access" class="form-check-input" type="radio" value="0" id="tier_golf_only" {{ auth()->user()->role === 'storekeeper' ? 'checked' : '' }} />
                   </label>
                 </div>
               </div>
             </div>
+            @if(auth()->user()->role === 'storekeeper')
+            <div class="alert alert-info py-2 mt-3 small mb-0">
+              <i class="ri ri-information-line me-1"></i> Storekeepers can only register Custom (Golf Only) members.
+            </div>
+            @endif
           </div>
           <div class="row g-4">
             <div class="col-md-6">

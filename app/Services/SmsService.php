@@ -108,7 +108,7 @@ class SmsService
                     ],
                     CURLOPT_SSL_VERIFYPEER => false,
                     CURLOPT_SSL_VERIFYHOST => 0,
-                    CURLOPT_TIMEOUT => 30,
+                    CURLOPT_TIMEOUT => 5,
                     CURLOPT_USERAGENT => 'GolfClub-SMS-Client/1.0'
                 ]);
             } else {
@@ -135,7 +135,7 @@ class SmsService
                     CURLOPT_RETURNTRANSFER => true,
                     CURLOPT_ENCODING => '',
                     CURLOPT_MAXREDIRS => 10,
-                    CURLOPT_TIMEOUT => 30,
+                    CURLOPT_TIMEOUT => 5,
                     CURLOPT_FOLLOWLOCATION => true,
                     CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
                     CURLOPT_CUSTOMREQUEST => 'GET',
@@ -308,7 +308,21 @@ class SmsService
         if ($initialBalance > 0) {
             $message .= "Initial Balance: TZS " . number_format($initialBalance) . ". ";
         }
-        $message .= "Thank you for joining us!";
+        $message .= "Your card is now being designed and printed. We will notify you when it's ready. Thank you!";
+        
+        return $this->send($member->phone, $message);
+    }
+    
+    /**
+     * Send SMS notification when card is ready for pickup
+     */
+    public function sendCardReadyNotification($member)
+    {
+        if (!$member->phone) {
+            return ['success' => false, 'message' => 'Member has no phone number'];
+        }
+        
+        $message = "Hello {$member->name}, your Membership Card is ready for pickup at the Reception desk. Please bring your ID to collect it. Thank you for choosing Golf Club!";
         
         return $this->send($member->phone, $message);
     }

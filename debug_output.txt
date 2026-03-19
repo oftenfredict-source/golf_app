@@ -1,0 +1,16 @@
+USER: Ally Hamidu (Role: counter)
+ASSIGNED COUNTER: Soft (ID: 5)
+COUNTER IS_ALCOHOL: NO
+
+MATCHING CATEGORIES FOR THIS COUNTER:
+ID: 3 | Name: Alcohol | Alcohol: NO
+ID: 4 | Name: Non Alcohol | Alcohol: NO
+
+--- ALL COUNTERS ---
+ID: 4 | Name: Main Bar | Alcohol: YES | User ID: 18
+ID: 5 | Name: Soft | Alcohol: NO | User ID: 19
+
+--- ALL MENU CATEGORIES ---
+ID: 3 | Name: Alcohol | Alcohol: NO | Active: YES
+ID: 4 | Name: Non Alcohol | Alcohol: NO | Active: YES
+ID: 5 | Name: Main Bar Items | Alcohol: YES | Active: YES

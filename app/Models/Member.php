@@ -8,10 +8,17 @@ use App\Traits\HasUlidRouteKey;
 class Member extends Model
 {
     use HasUlidRouteKey;
+
+    // Card Issuance Statuses
+    const CARD_STATUS_PENDING_DESIGN = 'pending_design';
+    const CARD_STATUS_PRINTING = 'printing';
+    const CARD_STATUS_READY = 'ready';
+    const CARD_STATUS_ISSUED = 'issued';
     protected $fillable = [
         'member_id', 'name', 'email', 'phone', 'upi_id', 'card_number',
-        'membership_type', 'card_color', 'balance', 'ball_limit', 'show_balance',
-        'valid_until', 'status', 'photo', 'notes', 'is_card_issued', 'has_full_access'
+        'membership_type', 'card_color', 'balance', 'credit_limit', 'ball_limit', 'show_balance',
+        'valid_until', 'status', 'photo', 'notes', 'is_card_issued', 'has_full_access',
+        'card_status', 'card_design_at', 'card_ready_at', 'card_issued_at'
     ];
 
     protected $casts = [
@@ -128,12 +135,12 @@ class Member extends Model
 
     public function deductBalance($amount, $description = null)
     {
-        if (!$this->canAfford($amount)) {
+        if (!$this->safeDeduct($amount)) {
             return false;
         }
         
-        $balanceBefore = $this->balance;
-        $this->decrement('balance', $amount);
+        $balanceBefore = $this->balance + $amount; // Restore for logging
+        $balanceAfter = $this->balance;
         
         // Create transaction record
         Transaction::create([
@@ -144,13 +151,36 @@ class Member extends Model
             'category' => 'service',
             'amount' => $amount,
             'balance_before' => $balanceBefore,
-            'balance_after' => $this->fresh()->balance,
+            'balance_after' => $balanceAfter,
             'payment_method' => 'balance',
             'notes' => $description,
             'status' => 'completed',
         ]);
         
         return true;
+    }
+
+    /**
+     * Subtract from balance ONLY if sufficient funds exist.
+     * Use this in controllers that manage their own Transaction records.
+     */
+    public function safeDeduct($amount)
+    {
+        if (!$this->canAfford($amount)) {
+            return false;
+        }
+        
+        $this->decrement('balance', $amount);
+        $this->refresh();
+        return true;
+    }
+
+    /**
+     * Check if this member is a full cardholder who MUST pay by balance.
+     */
+    public function requiresBalancePayment()
+    {
+        return (bool)$this->has_full_access;
     }
 
     public function addBalance($amount, $paymentMethod = 'cash', $description = null)

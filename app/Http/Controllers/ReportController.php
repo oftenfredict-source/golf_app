@@ -25,7 +25,7 @@ class ReportController extends Controller
             'driving_range' => DrivingRangeSession::today()->completed()->sum('amount'),
             'equipment_rental' => EquipmentRental::today()->where('status', 'returned')->sum('total_amount'),
             'equipment_sales' => EquipmentSale::today()->completed()->sum('total_amount'),
-            'food_beverage' => Order::today()->completed()->sum('total_amount'),
+            'food_beverage' => Transaction::today()->where('type','payment')->where('category','food_beverage')->sum('amount'),
             'topups' => Topup::today()->sum('amount'),
             'transactions' => Transaction::today()->where('type', 'payment')->sum('amount'),
         ];
@@ -36,7 +36,7 @@ class ReportController extends Controller
             'driving_range' => DrivingRangeSession::whereBetween('start_time', [$startOfMonth, $endOfMonth])->completed()->sum('amount'),
             'equipment_rental' => EquipmentRental::whereBetween('start_time', [$startOfMonth, $endOfMonth])->where('status', 'returned')->sum('total_amount'),
             'equipment_sales' => EquipmentSale::whereBetween('created_at', [$startOfMonth, $endOfMonth])->completed()->sum('total_amount'),
-            'food_beverage' => Order::whereBetween('created_at', [$startOfMonth, $endOfMonth])->completed()->sum('total_amount'),
+            'food_beverage' => Transaction::whereBetween('created_at', [$startOfMonth, $endOfMonth])->where('type','payment')->where('category','food_beverage')->sum('amount'),
             'topups' => Topup::whereBetween('created_at', [$startOfMonth, $endOfMonth])->sum('amount'),
         ];
         $monthlySummary['total'] = array_sum($monthlySummary) - $monthlySummary['topups'];
@@ -63,7 +63,7 @@ class ReportController extends Controller
             'ball_management' => Transaction::whereBetween('created_at', [$fromDate, $toDate])->where('category', 'ball_management')->where('type', 'payment')->sum('amount'),
             'equipment_rental' => EquipmentRental::whereBetween('start_time', [$fromDate, $toDate])->where('status', 'returned')->sum('total_amount'),
             'equipment_sales' => EquipmentSale::whereBetween('created_at', [$fromDate, $toDate])->where('status', 'completed')->sum('total_amount'),
-            'food_beverage' => Order::whereBetween('created_at', [$fromDate, $toDate])->where('status', 'completed')->sum('total_amount'),
+            'food_beverage' => Transaction::whereBetween('created_at', [$fromDate, $toDate])->where('type','payment')->where('category','food_beverage')->sum('amount'),
         ];
         $revenueByCategory['total'] = array_sum($revenueByCategory);
 
@@ -86,7 +86,7 @@ class ReportController extends Controller
             $drivingRange = (float) DrivingRangeSession::whereBetween('start_time', [$dayStart, $dayEnd])->where('status', 'completed')->sum('amount');
             $equipmentRental = (float) EquipmentRental::whereBetween('start_time', [$dayStart, $dayEnd])->where('status', 'returned')->sum('total_amount');
             $equipmentSales = (float) EquipmentSale::whereBetween('created_at', [$dayStart, $dayEnd])->where('status', 'completed')->sum('total_amount');
-            $foodBeverage = (float) Order::whereBetween('created_at', [$dayStart, $dayEnd])->where('status', 'completed')->sum('total_amount');
+            $foodBeverage = (float) Transaction::whereBetween('created_at', [$dayStart, $dayEnd])->where('type','payment')->where('category','food_beverage')->sum('amount');
             
             $dailyTrend[$dateStr] = [
                 'date' => $dateStr,
@@ -244,10 +244,10 @@ class ReportController extends Controller
             ],
             'food_beverage' => [
                 'orders' => Order::whereBetween('created_at', [$dateStart, $dateEnd])->count(),
-                'completed' => Order::whereBetween('created_at', [$dateStart, $dateEnd])->where('status', 'completed')->count(),
-                'pending' => Order::whereBetween('created_at', [$dateStart, $dateEnd])->where('status', 'pending')->count(),
-                'revenue' => Order::whereBetween('created_at', [$dateStart, $dateEnd])->where('status', 'completed')->sum('total_amount'),
-                'average_order' => Order::whereBetween('created_at', [$dateStart, $dateEnd])->where('status', 'completed')->avg('total_amount'),
+                'completed'     => Order::whereBetween('created_at', [$dateStart, $dateEnd])->whereIn('status', ['served','complete','completed'])->count(),
+                'pending'       => Order::whereBetween('created_at', [$dateStart, $dateEnd])->whereIn('status', ['saved','pending','preparing','ready'])->count(),
+                'revenue'       => Transaction::whereBetween('created_at', [$dateStart, $dateEnd])->where('type','payment')->where('category','food_beverage')->sum('amount'),
+                'average_order' => Order::whereBetween('created_at', [$dateStart, $dateEnd])->where('status', '!=', 'cancelled')->avg('total_amount'),
             ],
             'topups' => [
                 'count' => Topup::whereBetween('created_at', [$dateStart, $dateEnd])->count(),
@@ -282,7 +282,7 @@ class ReportController extends Controller
             'ball_management' => Transaction::whereBetween('created_at', [$fromDate, $toDate])->where('category', 'ball_management')->where('type', 'payment')->sum('amount'),
             'equipment_rental' => EquipmentRental::whereBetween('start_time', [$fromDate, $toDate])->where('status', 'returned')->sum('total_amount'),
             'equipment_sales' => EquipmentSale::whereBetween('created_at', [$fromDate, $toDate])->where('status', 'completed')->sum('total_amount'),
-            'food_beverage' => Order::whereBetween('created_at', [$fromDate, $toDate])->where('status', 'completed')->sum('total_amount'),
+            'food_beverage' => Transaction::whereBetween('created_at', [$fromDate, $toDate])->where('type','payment')->where('category','food_beverage')->sum('amount'),
         ];
         $revenueByCategory['total'] = array_sum($revenueByCategory);
 
@@ -398,10 +398,10 @@ class ReportController extends Controller
             ],
             'food_beverage' => [
                 'orders' => Order::whereBetween('created_at', [$dateStart, $dateEnd])->count(),
-                'completed' => Order::whereBetween('created_at', [$dateStart, $dateEnd])->where('status', 'completed')->count(),
-                'pending' => Order::whereBetween('created_at', [$dateStart, $dateEnd])->where('status', 'pending')->count(),
-                'revenue' => Order::whereBetween('created_at', [$dateStart, $dateEnd])->where('status', 'completed')->sum('total_amount'),
-                'average_order' => Order::whereBetween('created_at', [$dateStart, $dateEnd])->where('status', 'completed')->avg('total_amount'),
+                'completed'     => Order::whereBetween('created_at', [$dateStart, $dateEnd])->whereIn('status', ['served','complete','completed'])->count(),
+                'pending'       => Order::whereBetween('created_at', [$dateStart, $dateEnd])->whereIn('status', ['saved','pending','preparing','ready'])->count(),
+                'revenue'       => Transaction::whereBetween('created_at', [$dateStart, $dateEnd])->where('type','payment')->where('category','food_beverage')->sum('amount'),
+                'average_order' => Order::whereBetween('created_at', [$dateStart, $dateEnd])->where('status', '!=', 'cancelled')->avg('total_amount'),
             ],
             'topups' => [
                 'count' => Topup::whereBetween('created_at', [$dateStart, $dateEnd])->count(),

@@ -19,6 +19,11 @@ class Transaction extends Model
         return $this->belongsTo(Member::class);
     }
 
+    public function order()
+    {
+        return $this->belongsTo(Order::class, 'reference_id');
+    }
+
     public function scopeToday($query)
     {
         return $query->whereDate('created_at', today());

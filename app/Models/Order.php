@@ -41,7 +41,7 @@ class Order extends Model
 
     public function scopeActive($query)
     {
-        return $query->where('status', 'saved');
+        return $query->whereIn('status', ['saved', 'pending', 'preparing', 'ready', 'served']);
     }
 
     public function scopeCompleted($query)

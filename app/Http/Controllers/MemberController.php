@@ -221,6 +221,7 @@ class MemberController extends Controller
                 'status' => 'active',
                 'notes' => $request->notes ?? null,
                 'has_full_access' => $request->has_full_access ?? false,
+                'card_status' => Member::CARD_STATUS_PENDING_DESIGN, // DB column is NOT NULL
             ]);
         } catch (\Illuminate\Database\QueryException $e) {
             // Handle database errors (e.g., unique constraint violations, missing columns)
@@ -423,7 +424,7 @@ class MemberController extends Controller
         if (!$member->canAfford($request->amount)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Insufficient balance. Current balance: TZS ' . number_format($member->balance),
+                'message' => 'Insufficient balance. Current balance: TZS ' . number_format((float)$member->balance),
                 'balance' => $member->balance,
             ], 400);
         }
@@ -577,6 +578,15 @@ class MemberController extends Controller
     {
         $member = Member::findOrFail($id);
         $member->is_card_issued = !$member->is_card_issued;
+        
+        if ($member->is_card_issued) {
+            $member->card_status = Member::CARD_STATUS_ISSUED;
+            $member->card_issued_at = now();
+        } else {
+            $member->card_status = Member::CARD_STATUS_READY;
+            $member->card_issued_at = null;
+        }
+        
         $member->save();
 
         ActivityLog::log('payments', 'updated', "Member card issuance toggled for {$member->name}: " . ($member->is_card_issued ? 'Issued' : 'Not Issued'), 'Member', $member->id);
@@ -584,7 +594,57 @@ class MemberController extends Controller
         return response()->json([
             'success' => true,
             'is_card_issued' => $member->is_card_issued,
+            'card_status' => $member->card_status,
             'message' => 'Member card status updated.'
+        ]);
+    }
+
+    public function updateCardStatus(Request $request, $id)
+    {
+        $request->validate([
+            'status' => 'required|string|in:pending_design,printing,ready,issued'
+        ]);
+
+        $member = Member::findOrFail($id);
+        $oldStatus = $member->card_status;
+        $newStatus = $request->status;
+
+        if ($oldStatus === $newStatus) {
+            return response()->json(['success' => true, 'message' => 'Status is already ' . $newStatus]);
+        }
+
+        $member->card_status = $newStatus;
+
+        if ($newStatus === Member::CARD_STATUS_PENDING_DESIGN) {
+            $member->card_design_at = null;
+            $member->card_ready_at = null;
+            $member->card_issued_at = null;
+            $member->is_card_issued = false;
+        } elseif ($newStatus === Member::CARD_STATUS_PRINTING) {
+            $member->card_design_at = now();
+        } elseif ($newStatus === Member::CARD_STATUS_READY) {
+            $member->card_ready_at = now();
+            // Send SMS notification
+            try {
+                $smsService = new SmsService();
+                $smsService->sendCardReadyNotification($member);
+            } catch (\Exception $e) {
+                Log::error('Failed to send card ready SMS', ['member_id' => $member->id, 'error' => $e->getMessage()]);
+            }
+        } elseif ($newStatus === Member::CARD_STATUS_ISSUED) {
+            $member->card_issued_at = now();
+            $member->is_card_issued = true;
+        }
+
+        $member->save();
+
+        ActivityLog::log('payments', 'updated', "Card status for {$member->name} updated from {$oldStatus} to {$newStatus}", 'Member', $member->id);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Card status updated to ' . ucfirst(str_replace('_', ' ', $newStatus)),
+            'card_status' => $newStatus,
+            'is_card_issued' => $member->is_card_issued
         ]);
     }
 }

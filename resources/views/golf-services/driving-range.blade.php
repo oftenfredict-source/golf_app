@@ -169,7 +169,7 @@
 
         <hr class="my-6">
         <h6 class="mb-4">Session Details Table</h6>
-        <div class="table-responsive">
+        <div class="table-responsive text-nowrap">
           <table class="table table-hover" id="activeSessionsTable">
             <thead>
               <tr>
@@ -233,7 +233,7 @@
         <h5 class="mb-0">Today's Sessions</h5>
       </div>
       <div class="card-body">
-        <div class="table-responsive">
+        <div class="table-responsive text-nowrap">
           <table class="table table-hover">
             <thead>
               <tr>
@@ -286,7 +286,7 @@
 
 <!-- New Session Modal -->
 <div class="modal fade" id="newSessionModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-lg">
+  <div class="modal-dialog modal-lg modal-fullscreen-md-down">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">Start New Driving Range Session</h5>
@@ -316,7 +316,8 @@
                           data-phone="{{ $member->phone }}"
                           data-card="{{ $member->card_number }}"
                           data-balance="{{ $member->balance }}"
-                          data-type="{{ $member->membership_type }}">
+                          data-type="{{ $member->membership_type }}"
+                          data-full-access="{{ $member->has_full_access ? 1 : 0 }}">
                     {{ $member->name }} - {{ $member->card_number }} (Balance: TZS {{ number_format($member->balance) }})
                   </option>
                   @endforeach
@@ -541,8 +542,29 @@ function updateMemberInfo() {
       phone: option.dataset.phone,
       card: option.dataset.card,
       balance: parseFloat(option.dataset.balance),
-      type: option.dataset.type
+      type: option.dataset.type,
+      full_access: parseInt(option.dataset.fullAccess) || 0
     };
+    
+    // User Rule: Cardholders (full_access=1) MUST pay by balance.
+    const paymentMethod = document.getElementById('payment_method');
+    if (selectedMember.full_access) {
+      paymentMethod.value = 'balance';
+      // Disable non-balance options for cardholders
+      Array.from(paymentMethod.options).forEach(opt => {
+        if (opt.value !== 'balance') opt.disabled = true;
+        else opt.disabled = false;
+      });
+      document.getElementById('amountDescription').textContent = 'Cardholders must pay via card balance.';
+    } else {
+      // Custom/Walk-in members can use any method EXCEPT balance (usually)
+      paymentMethod.value = 'cash';
+      Array.from(paymentMethod.options).forEach(opt => {
+        if (opt.value === 'balance') opt.disabled = true;
+        else opt.disabled = false;
+      });
+      document.getElementById('amountDescription').textContent = 'Selected payment method for custom member.';
+    }
     
     document.getElementById('info_name').textContent = selectedMember.name;
     document.getElementById('info_card').textContent = selectedMember.card;

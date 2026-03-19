@@ -202,8 +202,8 @@
 
           <div class="mt-4">
             <input type="hidden" id="payment_method" name="payment_method" value="balance">
-            <button type="submit" class="btn btn-primary btn-lg w-100 py-3 shadow-sm" id="orderBtn">
-              <i class="ri ri-save-line me-2"></i> SAVE ORDER
+            <button type="submit" class="btn btn-primary btn-lg w-100 py-3 shadow-sm fw-black" id="orderBtn" style="letter-spacing: 1px;">
+              <i class="ri ri-restaurant-2-line me-2"></i> SEND TO KITCHEN
             </button>
           </div>
         </form>
@@ -305,7 +305,10 @@
                 <td class="ps-4">
                   <h6 class="mb-0 fw-bold">{{ $item->name }}</h6>
                   @if($item->description)
-                  <small class="text-muted">{{ \Illuminate\Support\Str::limit($item->description, 50) }}</small>
+                    <small class="text-muted">{{ \Illuminate\Support\Str::limit($item->description, 50) }}</small>
+                  @endif
+                  @if($item->category && $item->category->is_alcohol)
+                    <span class="badge bg-label-danger py-0 px-1" style="font-size: 0.6rem;"><i class="ri ri-goblet-line"></i> Alcohol</span>
                   @endif
                 </td>
                 <td>
@@ -364,9 +367,19 @@
       </div>
       <form id="addCategoryForm">
         <div class="modal-body p-4">
-          <div class="form-floating form-floating-outline mb-4">
-            <input type="text" class="form-control" id="category_name" name="name" required placeholder="e.g., Beverages">
-            <label for="category_name">Category Name *</label>
+          <div class="row mb-4">
+            <div class="col-6">
+              <div class="form-floating form-floating-outline">
+                <input type="text" class="form-control" id="category_name" name="name" required placeholder="e.g., Beverages">
+                <label for="category_name">Category Name *</label>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="form-check form-switch pt-2">
+                <input type="checkbox" class="form-check-input" id="category_is_alcohol" name="is_alcohol" />
+                <label class="form-check-label" for="category_is_alcohol">Contains Alcohol</label>
+              </div>
+            </div>
           </div>
           <div class="form-floating form-floating-outline">
             <textarea class="form-control" name="description" style="height:90px" placeholder="Optional..."></textarea>
@@ -483,6 +496,19 @@
 const activeOrdersData = {!! json_encode($activeOrders ?? []) !!};
 let selectedMemberBalance = 0;
 let selectedMemberId = null;
+
+// Auto-fill table number from URL
+document.addEventListener('DOMContentLoaded', function() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const tableNum = urlParams.get('table');
+  if (tableNum) {
+    const tableInput = document.getElementById('table_number');
+    if (tableInput) {
+      tableInput.value = tableNum;
+      tableInput.classList.add('bg-label-info', 'fw-bold');
+    }
+  }
+});
 
 // ============================================================
 // Event delegation
@@ -628,18 +654,18 @@ document.getElementById('quickOrderForm').addEventListener('submit', function(e)
   .then(r => r.json())
   .then(data => {
     if (data.success) {
-      showTransactionSuccess({ title: 'Order Saved!', amount: data.order.total_amount, new_balance: data.new_balance, order_number: data.order.order_number })
+      showTransactionSuccess({ title: 'Order Sent to Kitchen!', amount: data.order.total_amount, new_balance: data.new_balance, order_number: data.order.order_number })
         .then(() => location.reload());
     } else {
       showError(data.message || 'Failed to create order');
       btn.disabled = false;
-      btn.innerHTML = '<i class="ri ri-save-line me-2"></i> SAVE ORDER';
+      btn.innerHTML = '<i class="ri ri-restaurant-2-line me-2"></i> SEND TO KITCHEN';
     }
   })
   .catch(() => {
     showError('An error occurred. Please try again.');
     btn.disabled = false;
-    btn.innerHTML = '<i class="ri ri-save-line me-2"></i> SAVE ORDER';
+    btn.innerHTML = '<i class="ri ri-restaurant-2-line me-2"></i> SEND TO KITCHEN';
   });
 });
 

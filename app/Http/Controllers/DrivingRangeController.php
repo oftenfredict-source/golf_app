@@ -5,10 +5,12 @@ namespace App\Http\Controllers;
 use App\Models\DrivingRangeSession;
 use App\Models\DrivingRangeConfig;
 use App\Models\Member;
-use App\Models\Transaction;
+use App\Models\Configuration;
+use Illuminate\Support\Facades\Log;
 use App\Models\ActivityLog;
 use App\Services\SmsService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
 class DrivingRangeController extends Controller
@@ -90,6 +92,18 @@ class DrivingRangeController extends Controller
         $customerPhone = '';
         $customerUpi = '';
 
+        // User Rule: Cardholders (has_full_access=1) MUST pay by balance.
+        // Custom/Walk-ins can pay by cash.
+        if ($request->member_id) {
+            $member = Member::find($request->member_id);
+            if ($member && $member->requiresBalancePayment() && $request->payment_method !== 'balance') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Members with issued cards must pay using their card balance. Please select "Balance" as the payment method.'
+                ], 400);
+            }
+        }
+
         // If member is selected, use member data and check balance
         if ($request->member_id) {
             $member = Member::findOrFail($request->member_id);
@@ -109,7 +123,9 @@ class DrivingRangeController extends Controller
 
             // If paying with balance, check and deduct
             if ($request->payment_method === 'balance') {
-                if (!$member->canAfford($amount)) {
+                // Force strict balance deduction
+                $balanceBefore = $member->balance;
+                if (!$member->safeDeduct($amount)) {
                     return response()->json([
                         'success' => false,
                         'message' => 'Insufficient balance. Required: TZS ' . number_format($amount) . ', Available: TZS ' . number_format($member->balance),
@@ -117,10 +133,7 @@ class DrivingRangeController extends Controller
                         'balance' => $member->balance,
                     ], 400);
                 }
-
-                $balanceBefore = $member->balance;
-                $member->decrement('balance', $amount);
-                $balanceAfter = $member->fresh()->balance;
+                $balanceAfter = $member->balance;
             }
 
             $customerName = $member->name;
@@ -242,7 +255,7 @@ class DrivingRangeController extends Controller
             'sms_sent' => $smsSent,
         ]);
         } catch (\Exception $e) {
-            \Log::error('Driving Range Session Store Error: ' . $e->getMessage(), [
+            Log::error('Driving Range Session Store Error: ' . $e->getMessage(), [
                 'exception' => $e,
                 'request' => $request->all(),
                 'trace' => $e->getTraceAsString()
@@ -289,10 +302,9 @@ class DrivingRangeController extends Controller
                     $member = Member::where('card_number', $session->customer_upi)->first();
                 }
                 
-                if ($member && $member->canAfford($additionalCharge)) {
-                    $balanceBefore = $member->balance;
-                    $member->decrement('balance', $additionalCharge);
-                    $balanceAfter = $member->fresh()->balance;
+                $balanceBefore = $member->balance;
+                if ($member->safeDeduct($additionalCharge)) {
+                    $balanceAfter = $member->balance;
                     
                     // Record additional charge transaction
                     Transaction::create([
@@ -382,7 +394,7 @@ class DrivingRangeController extends Controller
                 $smsResult = $smsService->send($phoneNumber, $message);
                 $smsSent = $smsResult['success'] ?? false;
             } catch (\Exception $e) {
-                \Log::error('Failed to send SMS for session end', [
+                Log::error('Failed to send SMS for session end', [
                     'session_id' => $session->id,
                     'error' => $e->getMessage()
                 ]);

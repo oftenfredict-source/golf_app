@@ -8,6 +8,7 @@ class MenuItem extends Model
 {
     protected $fillable = [
         'category_id', 'name', 'description', 'price',
+        'stock_quantity', 'low_stock_threshold',
         'prep_time_minutes', 'is_available', 'image'
     ];
 

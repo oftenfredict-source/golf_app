@@ -273,7 +273,7 @@
         <a href="{{ route('payments.transactions') }}" class="btn btn-sm btn-label-primary">View All</a>
       </div>
       <div class="card-body">
-        <div class="table-responsive">
+        <div class="table-responsive text-nowrap">
           <table class="table table-hover">
             <thead>
               <tr>
@@ -464,7 +464,7 @@
         <a href="{{ route('payments.top-ups') }}" class="btn btn-sm btn-label-primary">View All</a>
       </div>
       <div class="card-body p-0">
-        <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+        <div class="table-responsive text-nowrap" style="max-height: 300px; overflow-y: auto;">
           <table class="table table-sm mb-0">
             <thead class="table-light sticky-top">
               <tr>
@@ -503,7 +503,7 @@
         <a href="{{ route('access-control.entry-gates') }}" class="btn btn-sm btn-label-primary">View All</a>
       </div>
       <div class="card-body p-0">
-        <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+        <div class="table-responsive text-nowrap" style="max-height: 300px; overflow-y: auto;">
           <table class="table table-sm mb-0">
             <thead class="table-light sticky-top">
               <tr>
@@ -614,6 +614,54 @@
       </div>
     </div>
   </div>
+  <div class="col-xl-6">
+    <div class="card h-100 border-start border-warning border-5 shadow-sm">
+      <div class="card-header bg-transparent d-flex justify-content-between align-items-center pb-2">
+        <h5 class="mb-0 fw-bold text-warning"><i class="ri-bank-card-line me-2"></i>Card Issuance Queue</h5>
+        <a href="{{ route('payments.upi-management') }}" class="btn btn-sm btn-label-warning text-warning">Member Directory</a>
+      </div>
+      <div class="card-body p-0">
+        <div class="list-group list-group-flush">
+            @forelse($pendingCards as $member)
+            <div class="list-group-item px-4 py-3 border-0 border-bottom">
+                <div class="d-flex align-items-center mb-2">
+                    <div class="avatar bg-label-warning rounded-circle me-3 d-flex align-items-center justify-content-center fw-bold" style="width: 35px; height: 35px;">
+                        {{ strtoupper(substr($member->name, 0, 1)) }}
+                    </div>
+                    <div class="flex-grow-1">
+                        <h6 class="mb-0 fw-bold small">{{ $member->name }}</h6>
+                        <small class="text-muted" style="font-size: 0.7rem;">Reg: {{ $member->created_at->format('M d, H:i') }}</small>
+                    </div>
+                </div>
+                
+                <div class="d-flex align-items-center justify-content-between p-2 bg-light rounded-3">
+                    <div class="small fw-bold" style="font-size: 0.75rem;">
+                        @if($member->card_status == 'pending_design')
+                            <span class="text-warning"><i class="ri-time-line me-1"></i> Pending Design</span>
+                        @elseif($member->card_status == 'printing')
+                            <span class="text-primary"><i class="ri-printer-line me-1"></i> Printing</span>
+                        @elseif($member->card_status == 'ready')
+                            <span class="text-success"><i class="ri-checkbox-circle-line me-1"></i> Ready</span>
+                        @endif
+                    </div>
+                    <div class="btn-group">
+                        @if($member->card_status == 'pending_design')
+                            <button class="btn btn-xs btn-primary py-0 px-2" onclick="updateCardStatus('{{ $member->id }}', 'printing')" style="font-size: 0.7rem;">Design Done</button>
+                        @elseif($member->card_status == 'printing')
+                            <button class="btn btn-xs btn-success py-0 px-2" onclick="updateCardStatus('{{ $member->id }}', 'ready')" style="font-size: 0.7rem;">Mark Ready</button>
+                        @elseif($member->card_status == 'ready')
+                            <button class="btn btn-xs btn-dark py-0 px-2" onclick="updateCardStatus('{{ $member->id }}', 'issued')" style="font-size: 0.7rem;">Issue Now</button>
+                        @endif
+                    </div>
+                </div>
+            </div>
+            @empty
+            <div class="text-center py-5 text-muted small">No cards in the issuance queue.</div>
+            @endforelse
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- Active Equipment Rentals -->
@@ -714,6 +762,46 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
   
+  
+  // Card Status Management
+  window.updateCardStatus = function(memberId, status) {
+      let confirmText = "Transitioning card to " + status.replace('_', ' ') + "...";
+      if (status === 'ready') confirmText = "The member will be notified via SMS that their card is ready for pickup.";
+      if (status === 'issued') confirmText = "Confirm that the member has successfully collected their card.";
+
+      Swal.fire({
+          title: 'Update Card Status?',
+          text: confirmText,
+          icon: 'info',
+          showCancelButton: true,
+          confirmButtonText: 'Yes, proceed',
+          showLoaderOnConfirm: true,
+          preConfirm: () => {
+              return fetch(`/payments/members/${memberId}/card-status`, {
+                  method: 'POST',
+                  headers: {
+                      'Content-Type': 'application/json',
+                      'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                      'Accept': 'application/json'
+                  },
+                  body: JSON.stringify({ status: status })
+              })
+              .then(response => {
+                  if (!response.ok) throw new Error(response.statusText);
+                  return response.json();
+              })
+              .catch(error => {
+                  Swal.showValidationMessage(`Request failed: ${error}`);
+              });
+          },
+          allowOutsideClick: () => !Swal.isLoading()
+      }).then((result) => {
+          if (result.isConfirmed && result.value.success) {
+              Swal.fire('Success', result.value.message, 'success').then(() => location.reload());
+          }
+      });
+  }
+
   // Auto-refresh dashboard every 60 seconds
   setTimeout(function() {
     location.reload();

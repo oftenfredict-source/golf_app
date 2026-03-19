@@ -40,39 +40,71 @@ class EquipmentController extends Controller
     public function createRental(Request $request)
     {
         $request->validate([
-            'member_id' => 'required|exists:members,id',
+            'member_id' => 'nullable|exists:members,id',
+            'customer_name' => 'nullable|required_without:member_id|string',
+            'customer_phone' => 'nullable|string',
             'equipment_id' => 'required|exists:equipment,id',
             'quantity' => 'required|integer|min:1',
             'rental_type' => 'required|in:hourly,daily',
             'expected_return' => 'required|date',
+            'payment_method' => 'required|in:balance,cash,card,mobile,mobile_money',
         ]);
 
-        $member = Member::findOrFail($request->member_id);
+        $member = $request->member_id ? Member::find($request->member_id) : null;
         $equipment = Equipment::findOrFail($request->equipment_id);
         
         if ($equipment->available_quantity < $request->quantity) {
             return response()->json(['success' => false, 'message' => 'Not enough equipment available'], 400);
         }
 
-        $rate = $request->rental_type === 'hourly' ? $equipment->rental_hourly_rate : $equipment->rental_daily_rate;
-        $rentalAmount = $rate * $request->quantity;
+        $startTime = now();
+        $expectedReturn = \Carbon\Carbon::parse($request->expected_return);
+        $duration = 1;
 
-        // Check member balance
-        if ($member->balance < $rentalAmount) {
-            return response()->json(['success' => false, 'message' => 'Insufficient member balance. Required: TZS ' . number_format($rentalAmount)], 400);
+        $diffInMinutes = $startTime->diffInMinutes($expectedReturn, false);
+        if ($request->rental_type === 'hourly') {
+            $duration = ceil($diffInMinutes / 60);
+        } else {
+            $duration = ceil($diffInMinutes / (24 * 60));
         }
 
-        // Deduct from member balance
-        $balanceBefore = $member->balance;
-        $member->decrement('balance', $rentalAmount);
-        $balanceAfter = $member->fresh()->balance;
+        if ($duration < 1) $duration = 1;
+
+        $rate = $request->rental_type === 'hourly' ? $equipment->rental_hourly_rate : $equipment->rental_daily_rate;
+        // User Rule: Cardholders (has_full_access=1) MUST pay by balance.
+        // Custom/Walk-ins can pay by cash.
+        if ($member && $member->requiresBalancePayment() && $request->payment_method !== 'balance') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Members with issued cards must pay using their card balance. Please select "Balance" as the payment method.'
+            ], 400);
+        }
+        $rentalAmount = $rate * $request->quantity * $duration;
+
+        $balanceBefore = 0;
+        $balanceAfter = 0;
+
+        // Check member balance if applicable
+        if ($request->payment_method === 'balance') {
+            if (!$member) {
+                return response()->json(['success' => false, 'message' => 'Member is required for balance payment'], 400);
+            }
+            
+            $balanceBefore = $member->balance;
+            if (!$member->safeDeduct($rentalAmount)) {
+                return response()->json(['success' => false, 'message' => 'Insufficient member balance. Required: TZS ' . number_format($rentalAmount) . ', Available: TZS ' . number_format($member->balance)], 400);
+            }
+            $balanceAfter = $member->balance;
+        }
+
+        $dbPaymentMethod = $request->payment_method === 'mobile_money' ? 'mobile' : $request->payment_method;
 
         $rental = EquipmentRental::create([
             'equipment_id' => $request->equipment_id,
-            'member_id' => $request->member_id,
-            'customer_name' => $member->name,
-            'customer_phone' => $member->phone,
-            'customer_upi' => $member->card_number,
+            'member_id' => $member ? $member->id : null,
+            'customer_name' => $member ? $member->name : $request->customer_name,
+            'customer_phone' => $member ? $member->phone : $request->customer_phone,
+            'customer_upi' => $member ? $member->card_number : null,
             'quantity' => $request->quantity,
             'rental_type' => $request->rental_type,
             'start_time' => now(),
@@ -80,7 +112,7 @@ class EquipmentController extends Controller
             'deposit_paid' => $equipment->deposit_amount * $request->quantity,
             'rental_amount' => $rentalAmount,
             'total_amount' => $rentalAmount,
-            'payment_method' => 'balance', // Changed from 'card' to 'balance'
+            'payment_method' => $dbPaymentMethod,
             'notes' => $request->notes,
             'status' => 'active',
         ]);
@@ -91,14 +123,14 @@ class EquipmentController extends Controller
         // Record transaction
         Transaction::create([
             'transaction_id' => Transaction::generateTransactionId(),
-            'member_id' => $member->id,
-            'customer_name' => $member->name,
+            'member_id' => $member ? $member->id : null,
+            'customer_name' => $member ? $member->name : $request->customer_name,
             'type' => 'payment',
             'category' => 'equipment_rental',
             'amount' => $rentalAmount,
             'balance_before' => $balanceBefore,
             'balance_after' => $balanceAfter,
-            'payment_method' => 'balance',
+            'payment_method' => $request->payment_method === 'mobile_money' ? 'mobile' : $request->payment_method,
             'reference_type' => 'equipment_rental',
             'reference_id' => $rental->id,
             'notes' => 'Equipment Rental: ' . $equipment->name . ' (' . $request->quantity . 'x)',
@@ -106,7 +138,7 @@ class EquipmentController extends Controller
         ]);
 
         // Log activity
-        ActivityLog::log('golf-services', 'created', "Equipment rental created for {$member->name}: {$equipment->name} ({$request->quantity}x)", 'EquipmentRental', $rental->id, [
+        ActivityLog::log('golf-services', 'created', "Equipment rental created for " . ($member ? $member->name : $request->customer_name) . ": {$equipment->name} ({$request->quantity}x)", 'EquipmentRental', $rental->id, [
             'equipment' => $equipment->name,
             'quantity' => $request->quantity,
             'rental_type' => $request->rental_type,
@@ -116,7 +148,7 @@ class EquipmentController extends Controller
 
         // Send SMS notification for deduction
         $smsSent = false;
-        if ($request->send_sms ?? true) {
+        if (($request->send_sms ?? true) && $member) {
             $smsService = new \App\Services\SmsService();
             $smsResult = $smsService->sendPaymentNotification($member, $rentalAmount, $balanceAfter, 'Equipment Rental');
             $smsSent = $smsResult['success'] ?? false;
@@ -124,9 +156,9 @@ class EquipmentController extends Controller
 
         return response()->json([
             'success' => true, 
-            'message' => 'Rental created. TZS ' . number_format($rentalAmount) . ' deducted from member card.', 
+            'message' => 'Rental created. ' . ($request->payment_method === 'balance' ? 'TZS ' . number_format($rentalAmount) . ' deducted from member card.' : 'Payment of TZS ' . number_format($rentalAmount) . ' received.'), 
             'rental' => $rental,
-            'new_balance' => $balanceAfter,
+            'new_balance' => $member ? $balanceAfter : null,
             'sms_sent' => $smsSent
         ]);
     }
@@ -160,10 +192,9 @@ class EquipmentController extends Controller
             // Charge late fee if applicable
             if ($lateFee > 0 && $rental->member) {
                 $member = $rental->member;
-                if ($member->balance >= $lateFee) {
-                    $balanceBefore = $member->balance;
-                    $member->decrement('balance', $lateFee);
-                    $balanceAfter = $member->fresh()->balance;
+                $balanceBefore = $member->balance;
+                if ($member->safeDeduct($lateFee)) {
+                    $balanceAfter = $member->balance;
                     
                     // Record late fee transaction
                     Transaction::create([
@@ -237,14 +268,24 @@ class EquipmentController extends Controller
     public function createSale(Request $request)
     {
         $request->validate([
-            'member_id' => 'required|exists:members,id',
+            'member_id' => 'nullable|exists:members,id',
+            'customer_name' => 'nullable|required_without:member_id|string',
             'items' => 'required|array|min:1',
             'items.*.equipment_id' => 'required|exists:equipment,id',
             'items.*.quantity' => 'required|integer|min:1',
+            'payment_method' => 'required|in:balance,cash,card,mobile,mobile_money',
         ]);
 
-        $member = Member::findOrFail($request->member_id);
+        $member = $request->member_id ? Member::find($request->member_id) : null;
         $subtotal = 0;
+        // User Rule: Cardholders (has_full_access=1) MUST pay by balance.
+        // Custom/Walk-ins can pay by cash.
+        if ($member && $member->requiresBalancePayment() && $request->payment_method !== 'balance') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Members with issued cards must pay using their card balance. Please select "Balance" as the payment method.'
+            ], 400);
+        }
         $saleItems = [];
 
         foreach ($request->items as $item) {
@@ -271,28 +312,36 @@ class EquipmentController extends Controller
         $discount = $request->discount ?? 0;
         $total = $subtotal - $discount;
 
-        // Check member balance
-        if ($member->balance < $total) {
-            return response()->json([
-                'success' => false, 
-                'message' => 'Insufficient member balance. Required: TZS ' . number_format($total) . ', Available: TZS ' . number_format($member->balance)
-            ], 400);
+        $balanceBefore = 0;
+        $balanceAfter = 0;
+
+        // Check member balance if applicable
+        if ($request->payment_method === 'balance') {
+            if (!$member) {
+                return response()->json(['success' => false, 'message' => 'Member is required for balance payment'], 400);
+            }
+            
+            $balanceBefore = $member->balance;
+            if (!$member->safeDeduct($total)) {
+                return response()->json([
+                    'success' => false, 
+                    'message' => 'Insufficient member balance. Required: TZS ' . number_format($total) . ', Available: TZS ' . number_format($member->balance)
+                ], 400);
+            }
+            $balanceAfter = $member->balance;
         }
 
-        // Deduct from member balance
-        $balanceBefore = $member->balance;
-        $member->decrement('balance', $total);
-        $balanceAfter = $member->fresh()->balance;
+        $dbPaymentMethod = $request->payment_method === 'mobile_money' ? 'mobile' : $request->payment_method;
 
         $sale = EquipmentSale::create([
-            'member_id' => $request->member_id,
-            'customer_name' => $member->name,
-            'customer_phone' => $member->phone,
-            'customer_upi' => $member->card_number,
+            'member_id' => $member ? $member->id : null,
+            'customer_name' => $member ? $member->name : $request->customer_name,
+            'customer_phone' => $member ? $member->phone : $request->customer_phone,
+            'customer_upi' => $member ? $member->card_number : null,
             'subtotal' => $subtotal,
             'discount' => $discount,
             'total_amount' => $total,
-            'payment_method' => 'balance', // Changed from 'card' to 'balance'
+            'payment_method' => $dbPaymentMethod,
             'sms_sent' => $request->send_sms ?? false,
             'notes' => $request->notes,
             'status' => 'completed',
@@ -306,14 +355,14 @@ class EquipmentController extends Controller
         // Record transaction
         Transaction::create([
             'transaction_id' => Transaction::generateTransactionId(),
-            'member_id' => $member->id,
-            'customer_name' => $member->name,
+            'member_id' => $member ? $member->id : null,
+            'customer_name' => $member ? $member->name : $request->customer_name,
             'type' => 'payment',
             'category' => 'equipment_sale',
             'amount' => $total,
             'balance_before' => $balanceBefore,
             'balance_after' => $balanceAfter,
-            'payment_method' => 'balance',
+            'payment_method' => $request->payment_method === 'mobile_money' ? 'mobile' : $request->payment_method,
             'reference_type' => 'equipment_sale',
             'reference_id' => $sale->id,
             'notes' => 'Equipment Sale: ' . count($saleItems) . ' item(s)',
@@ -321,7 +370,7 @@ class EquipmentController extends Controller
         ]);
 
         // Log activity
-        ActivityLog::log('golf-services', 'created', "Equipment sale for {$member->name}: " . count($saleItems) . " item(s)", 'EquipmentSale', $sale->id, [
+        ActivityLog::log('golf-services', 'created', "Equipment sale for " . ($member ? $member->name : $request->customer_name) . ": " . count($saleItems) . " item(s)", 'EquipmentSale', $sale->id, [
             'items_count' => count($saleItems),
             'total_amount' => $total,
             'balance_after' => $balanceAfter,
@@ -329,7 +378,7 @@ class EquipmentController extends Controller
 
         // Send SMS notification for deduction
         $smsSent = false;
-        if ($request->send_sms ?? true) {
+        if (($request->send_sms ?? true) && $member) {
             $smsService = new \App\Services\SmsService();
             $smsResult = $smsService->sendPaymentNotification($member, $total, $balanceAfter, 'Equipment Purchase');
             $smsSent = $smsResult['success'] ?? false;
