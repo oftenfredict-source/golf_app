@@ -353,6 +353,62 @@
   </div>
 </div>
 
+{{-- Category Management (Collapsible) --}}
+<div class="row mb-6">
+  <div class="col-12">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header d-flex justify-content-between align-items-center py-3">
+        <h5 class="mb-0 fw-bold text-muted"><i class="ri ri-folder-2-line me-2"></i>Category Management</h5>
+        <button class="btn btn-sm btn-label-primary" type="button" data-bs-toggle="collapse" data-bs-target="#categoryListCollapse">
+          <i class="ri ri-arrow-down-s-line"></i> View All
+        </button>
+      </div>
+      <div id="categoryListCollapse" class="collapse">
+        <div class="card-body p-0 border-top">
+          <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th class="ps-4">Name</th>
+                  <th>Type</th>
+                  <th class="text-center">Items</th>
+                  <th class="pe-4 text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                @foreach($categories ?? [] as $cat)
+                <tr>
+                  <td class="ps-4">
+                    <span class="fw-bold">{{ $cat->name }}</span>
+                    @if($cat->description) <small class="text-muted d-block text-truncate" style="max-width: 200px;">{{ $cat->description }}</small> @endif
+                  </td>
+                  <td>
+                    @if($cat->is_alcohol) <span class="badge bg-label-danger py-0 px-1 me-1">Alcohol</span> @endif
+                    @if($cat->is_food) <span class="badge bg-label-warning py-0 px-1">Food</span> @endif
+                    @if(!$cat->is_alcohol && !$cat->is_food) <span class="badge bg-label-secondary py-0 px-1">General</span> @endif
+                  </td>
+                  <td class="text-center"><span class="badge rounded-pill bg-primary">{{ $cat->items_count ?? 0 }}</span></td>
+                  <td class="pe-4 text-end">
+                    <div class="btn-group">
+                      <button class="btn btn-sm btn-icon" onclick="editCategory({{ $cat->id }}, '{{ addslashes($cat->name) }}', '{{ addslashes($cat->description) }}', {{ $cat->is_alcohol?1:0 }}, {{ $cat->is_food?1:0 }})">
+                        <i class="ri ri-edit-line text-primary"></i>
+                      </button>
+                      <button class="btn btn-sm btn-icon" onclick="deleteCategory({{ $cat->id }})">
+                        <i class="ri ri-delete-bin-line text-danger"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+                @endforeach
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 {{-- ============================================================ --}}
 {{-- MODALS --}}
 {{-- ============================================================ --}}
@@ -376,8 +432,12 @@
             </div>
             <div class="col-6">
               <div class="form-check form-switch pt-2">
-                <input type="checkbox" class="form-check-input" id="category_is_alcohol" name="is_alcohol" />
+                <input type="checkbox" class="form-check-input" id="category_is_alcohol" name="is_alcohol" value="1" />
                 <label class="form-check-label" for="category_is_alcohol">Contains Alcohol</label>
+              </div>
+              <div class="form-check form-switch pt-2">
+                <input type="checkbox" class="form-check-input" id="category_is_food" name="is_food" value="1" />
+                <label class="form-check-label" for="category_is_food">Is Food/Kitchen</label>
               </div>
             </div>
           </div>
@@ -736,11 +796,21 @@ document.getElementById('addCategoryForm')?.addEventListener('submit', function(
   fetch('{{ route("services.categories.store") }}', { method:'POST', headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}, body: new FormData(this) })
     .then(r=>r.json()).then(data => { if (data.success) { bootstrap.Modal.getInstance(document.getElementById('addCategoryModal')).hide(); location.reload(); } else showError(data.message); });
 });
-function editCategory(id, name, description) {
+function editCategory(id, name, description, isAlcohol, isFood) {
   const newName = prompt('Edit category name:', name);
-  if (newName && newName !== name) {
-    fetch('{{ url("services/categories") }}/' + id, { method:'PUT', headers:{'Content-Type':'application/json','X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}, body: JSON.stringify({name: newName, description: description||''}) })
-      .then(r=>r.json()).then(data => data.success ? location.reload() : showError(data.message));
+  if (newName && (newName !== name || true)) {
+    fetch('{{ url("services/categories") }}/' + id, { 
+      method:'PUT', 
+      headers:{'Content-Type':'application/json','X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}, 
+      body: JSON.stringify({
+        name: newName, 
+        description: description||'',
+        is_alcohol: isAlcohol,
+        is_food: isFood,
+        is_alcohol_toggle: true // Flag to tell controller to handle checkboxes
+      }) 
+    })
+    .then(r=>r.json()).then(data => data.success ? location.reload() : showError(data.message));
   }
 }
 function deleteCategory(id) {

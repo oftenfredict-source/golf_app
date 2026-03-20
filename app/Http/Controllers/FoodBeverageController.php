@@ -505,7 +505,8 @@ class FoodBeverageController extends Controller
         $category = MenuCategory::create([
             'name' => $request->name,
             'description' => $request->description,
-            'is_alcohol' => $request->is_alcohol ?? false,
+            'is_alcohol' => $request->boolean('is_alcohol'),
+            'is_food' => $request->boolean('is_food'),
             'status' => $status,
             'is_active' => $status === 'active',
             'sort_order' => $request->sort_order ?? 0,
@@ -520,7 +521,18 @@ class FoodBeverageController extends Controller
     public function updateCategory(Request $request, $id)
     {
         $category = MenuCategory::findOrFail($id);
-        $updateData = $request->only(['name', 'description', 'status', 'is_active', 'sort_order', 'is_alcohol']);
+        $updateData = $request->only(['name', 'description', 'status', 'is_active', 'sort_order']);
+        
+        // Handle boolean flags correctly from checkboxes
+        if ($request->has('is_alcohol_toggle')) { // Use a specific flag if coming from a toggle/checkbox
+            $updateData['is_alcohol'] = $request->boolean('is_alcohol');
+        } elseif ($request->has('is_alcohol')) {
+            $updateData['is_alcohol'] = $request->boolean('is_alcohol');
+        }
+
+        if ($request->has('is_food')) {
+            $updateData['is_food'] = $request->boolean('is_food');
+        }
         
         // Sync status with is_active if status is provided
         if ($request->has('status')) {
