@@ -151,6 +151,7 @@
               </div>
             </div>
             
+            <div class="col-md-6">
               <label class="form-label fw-bold mt-4 mt-md-0">2. Select Quantity</label>
               <div class="row g-2 mb-4">
                 <div class="col-6">
@@ -199,7 +200,7 @@
               </div>
             </div>
           </div>
-          
+
           <div class="mt-4">
             <button type="submit" class="btn btn-primary btn-lg w-100 py-3 shadow-sm">
               <i class="ri ri-check-line me-2"></i> CONFIRM & ISSUE BALLS

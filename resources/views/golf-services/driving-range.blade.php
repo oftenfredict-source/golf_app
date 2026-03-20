@@ -305,25 +305,20 @@
                 <label for="customer_type">Customer Type *</label>
               </div>
             </div>
-            <!-- Member Selection -->
+            <!-- Member Selection (Searchable) -->
             <div class="col-12 mb-4" id="memberSelectionDiv">
-              <div class="form-floating form-floating-outline">
-                <select class="form-select" id="member_id" name="member_id" onchange="updateMemberInfo()">
-                  <option value="">Select Member (Card)</option>
-                  @foreach($members ?? [] as $member)
-                  <option value="{{ $member->id }}" 
-                          data-name="{{ $member->name }}" 
-                          data-phone="{{ $member->phone }}"
-                          data-card="{{ $member->card_number }}"
-                          data-balance="{{ $member->balance }}"
-                          data-type="{{ $member->membership_type }}"
-                          data-full-access="{{ $member->has_full_access ? 1 : 0 }}">
-                    {{ $member->name }} - {{ $member->card_number }} (Balance: TZS {{ number_format($member->balance) }})
-                  </option>
-                  @endforeach
-                </select>
-                <label for="member_id">Select Member</label>
+              <label class="form-label fw-semibold text-body-secondary small text-uppercase mb-1">Find Member</label>
+              <div class="input-group border rounded shadow-sm">
+                <span class="input-group-text bg-white border-0"><i class="ri ri-search-2-line text-muted"></i></span>
+                <input type="text" class="form-control border-0 py-3" id="member_search_input"
+                  placeholder="Search by name, card #, or phone..." autocomplete="off" />
+                <button type="button" class="btn btn-outline-secondary border-0" id="clearMemberBtn" style="display:none;" onclick="clearMemberSelection()">
+                  <i class="ri ri-close-line"></i>
+                </button>
               </div>
+              <div id="memberSearchSuggestions" class="list-group position-absolute shadow-lg border-0 mt-1"
+                style="z-index: 2000; display: none; max-height: 280px; overflow-y: auto; border-radius: 8px; width: calc(100% - 2.5rem);"></div>
+              <input type="hidden" id="member_id" name="member_id" />
             </div>
             <!-- Guest Information -->
             <div class="col-12 mb-4" id="guestInfoDiv" style="display: none;">
@@ -375,16 +370,19 @@
                 <label for="payment_method">Payment Method *</label>
               </div>
             </div>
-            <div class="col-md-6 mb-4">
-              <div class="form-floating form-floating-outline">
-                <select class="form-select" id="bay_number" name="bay_number" required>
-                  <option value="">Select Bay/Slot</option>
-                  @foreach($availableBays ?? range(1, 20) as $bay)
-                  <option value="{{ $bay }}">Bay {{ $bay }}</option>
-                  @endforeach
-                </select>
-                <label for="bay_number">Bay/Slot Number *</label>
+            <!-- Bay display (auto-assigned from clicking bay card) -->
+            <div class="col-12 mb-4" id="bayDisplayRow">
+              <div class="d-flex align-items-center gap-3 p-3 rounded border bg-primary-subtle">
+                <div class="avatar avatar-sm">
+                  <span class="avatar-initial rounded bg-primary"><i class="ri ri-map-pin-2-fill"></i></span>
+                </div>
+                <div class="flex-grow-1">
+                  <div class="small text-muted text-uppercase fw-bold">Assigned Bay / Slot</div>
+                  <div class="fw-bold fs-5 text-primary" id="bayDisplayLabel">No bay selected</div>
+                </div>
+                <span class="badge bg-label-primary fs-6" id="bayBadge">—</span>
               </div>
+              <input type="hidden" id="bay_number" name="bay_number" />
             </div>
             <div class="col-md-6 mb-4">
               <div class="form-floating form-floating-outline">
@@ -529,55 +527,128 @@ function updateCustomerType() {
   updateSessionPrice();
 }
 
-// Update member info display
-function updateMemberInfo() {
-  const select = document.getElementById('member_id');
-  const option = select.options[select.selectedIndex];
-  const infoBox = document.getElementById('memberInfoBox');
-  
-  if (select.value && !isGuest) {
-    selectedMember = {
-      id: select.value,
-      name: option.dataset.name,
-      phone: option.dataset.phone,
-      card: option.dataset.card,
-      balance: parseFloat(option.dataset.balance),
-      type: option.dataset.type,
-      full_access: parseInt(option.dataset.fullAccess) || 0
-    };
-    
-    // User Rule: Cardholders (full_access=1) MUST pay by balance.
-    const paymentMethod = document.getElementById('payment_method');
-    if (selectedMember.full_access) {
-      paymentMethod.value = 'balance';
-      // Disable non-balance options for cardholders
-      Array.from(paymentMethod.options).forEach(opt => {
-        if (opt.value !== 'balance') opt.disabled = true;
-        else opt.disabled = false;
-      });
-      document.getElementById('amountDescription').textContent = 'Cardholders must pay via card balance.';
-    } else {
-      // Custom/Walk-in members can use any method EXCEPT balance (usually)
-      paymentMethod.value = 'cash';
-      Array.from(paymentMethod.options).forEach(opt => {
-        if (opt.value === 'balance') opt.disabled = true;
-        else opt.disabled = false;
-      });
-      document.getElementById('amountDescription').textContent = 'Selected payment method for custom member.';
-    }
-    
-    document.getElementById('info_name').textContent = selectedMember.name;
-    document.getElementById('info_card').textContent = selectedMember.card;
-    document.getElementById('info_balance').textContent = 'TZS ' + selectedMember.balance.toLocaleString();
-    infoBox.style.display = 'block';
-    
-    updateSessionPrice();
-  } else {
-    selectedMember = null;
-    infoBox.style.display = 'none';
-    updateSessionPrice();
+// ---- Member Live Search ----
+let memberSearchTimeout;
+document.getElementById('member_search_input')?.addEventListener('input', function() {
+  const query = this.value.trim();
+  const suggestions = document.getElementById('memberSearchSuggestions');
+  if (query.length < 2) {
+    suggestions.style.display = 'none';
+    if (query.length === 0) clearMemberSelection(false);
+    return;
   }
+  clearTimeout(memberSearchTimeout);
+  memberSearchTimeout = setTimeout(() => {
+    fetch('{{ url("payments/members/search") }}?q=' + encodeURIComponent(query), {
+      headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
+    })
+    .then(r => r.json())
+    .then(members => {
+      const suggestions = document.getElementById('memberSearchSuggestions');
+      if (members && members.length > 0) {
+        suggestions.innerHTML = members.slice(0, 8).map(m => `
+          <div class="list-group-item list-group-item-action p-3 member-suggestion-item" style="cursor:pointer;"
+            data-id="${m.id}"
+            data-name="${(m.name||'').replace(/"/g,'&quot;')}"
+            data-card="${(m.card_number||'').replace(/"/g,'&quot;')}"
+            data-phone="${(m.phone||'').replace(/"/g,'&quot;')}"
+            data-balance="${parseFloat(m.balance)||0}"
+            data-full-access="${m.has_full_access?1:0}"
+            data-type="${m.membership_type||''}">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <strong class="text-primary">${m.name||'N/A'}</strong>
+                <div class="small text-muted">${m.card_number||'No card'} | ${m.phone||'No phone'}</div>
+              </div>
+              <div class="text-end">
+                <span class="badge bg-label-success">TZS ${m.balance ? parseFloat(m.balance).toLocaleString() : '0'}</span>
+              </div>
+            </div>
+          </div>`
+        ).join('');
+        suggestions.style.display = 'block';
+      } else {
+        suggestions.innerHTML = '<div class="list-group-item text-muted small">No members found</div>';
+        suggestions.style.display = 'block';
+      }
+    })
+    .catch(() => { const s = document.getElementById('memberSearchSuggestions'); if(s) s.style.display = 'none'; });
+  }, 300);
+});
+
+// Delegate click on member suggestions
+document.getElementById('memberSearchSuggestions')?.addEventListener('click', function(e) {
+  const item = e.target.closest('.member-suggestion-item');
+  if (!item) return;
+  selectMemberFromSearch(
+    item.dataset.id,
+    item.dataset.name,
+    item.dataset.card,
+    item.dataset.phone,
+    item.dataset.balance,
+    parseInt(item.dataset.fullAccess),
+    item.dataset.type
+  );
+});
+
+function selectMemberFromSearch(id, name, card, phone, balance, fullAccess, type) {
+  document.getElementById('member_id').value = id;
+  document.getElementById('member_search_input').value = name;
+  document.getElementById('memberSearchSuggestions').style.display = 'none';
+  document.getElementById('clearMemberBtn').style.display = 'inline-flex';
+
+  selectedMember = { id, name, phone, card, balance: parseFloat(balance||0), type, full_access: fullAccess };
+
+  const infoBox = document.getElementById('memberInfoBox');
+  document.getElementById('info_name').textContent = name;
+  document.getElementById('info_card').textContent = card || '-';
+  document.getElementById('info_balance').textContent = 'TZS ' + selectedMember.balance.toLocaleString();
+  infoBox.style.display = 'block';
+
+  const paymentMethod = document.getElementById('payment_method');
+  if (fullAccess) {
+    paymentMethod.value = 'balance';
+    Array.from(paymentMethod.options).forEach(opt => {
+      opt.disabled = opt.value !== 'balance';
+    });
+    document.getElementById('amountDescription').textContent = 'Cardholders must pay via card balance.';
+  } else {
+    paymentMethod.value = 'cash';
+    Array.from(paymentMethod.options).forEach(opt => {
+      opt.disabled = opt.value === 'balance';
+    });
+    document.getElementById('amountDescription').textContent = 'Selected payment method for custom member.';
+  }
+  updateSessionPrice();
 }
+
+function clearMemberSelection(clearInput = true) {
+  selectedMember = null;
+  const memberIdEl = document.getElementById('member_id');
+  if (memberIdEl) memberIdEl.value = '';
+  const searchInput = document.getElementById('member_search_input');
+  if (clearInput && searchInput) searchInput.value = '';
+  const suggestions = document.getElementById('memberSearchSuggestions');
+  if (suggestions) suggestions.style.display = 'none';
+  const clearBtn = document.getElementById('clearMemberBtn');
+  if (clearBtn) clearBtn.style.display = 'none';
+  const infoBox = document.getElementById('memberInfoBox');
+  if (infoBox) infoBox.style.display = 'none';
+  updateSessionPrice();
+}
+
+
+// Close suggestions when clicking outside
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('#member_search_input') && !e.target.closest('#memberSearchSuggestions')) {
+    const s = document.getElementById('memberSearchSuggestions');
+    if (s) s.style.display = 'none';
+  }
+});
+
+
+// Kept for compatibility but no longer needed with search
+function updateMemberInfo() {}
 
 // Update estimated price
 function updateSessionPrice() {
@@ -651,8 +722,15 @@ document.getElementById('newSessionForm').addEventListener('submit', function(e)
       return;
     }
   }
+
+  // Validate bay selection
+  const bayNumber = document.getElementById('bay_number').value;
+  if (!bayNumber) {
+    showWarning('No bay selected. Please close this dialog and click an available bay on the map to start a session.');
+    return;
+  }
   
-  // Check balance only if member and using balance payment
+
   if (customerType === 'member' && paymentMethod === 'balance') {
     const amount = parseFloat(document.getElementById('estimated_amount').value.replace(/,/g, ''));
     if (selectedMember.balance < amount) {
@@ -711,12 +789,30 @@ document.getElementById('newSessionForm').addEventListener('submit', function(e)
 
 // Helper to open new session modal with pre-selected bay
 function openNewSessionModal(bayNumber = null) {
-  if (bayNumber) {
-    document.getElementById('bay_number').value = bayNumber;
-  }
+  try {
+    clearMemberSelection();
+  } catch(e) { console.warn('clearMemberSelection error:', e); }
+
+  try {
+    const bayInput  = document.getElementById('bay_number');
+    const bayLabel  = document.getElementById('bayDisplayLabel');
+    const bayBadge  = document.getElementById('bayBadge');
+
+    if (bayNumber) {
+      if (bayInput)  bayInput.value = bayNumber;
+      if (bayLabel)  bayLabel.textContent = 'Bay ' + bayNumber;
+      if (bayBadge) { bayBadge.textContent = 'Bay ' + bayNumber; bayBadge.className = 'badge bg-primary fs-6'; }
+    } else {
+      if (bayInput)  bayInput.value = '';
+      if (bayLabel)  bayLabel.textContent = 'No bay selected — please click an available bay';
+      if (bayBadge) { bayBadge.textContent = '—'; bayBadge.className = 'badge bg-label-primary fs-6'; }
+    }
+  } catch(e) { console.warn('Bay badge error:', e); }
+
   const modal = new bootstrap.Modal(document.getElementById('newSessionModal'));
   modal.show();
 }
+
 
 // Function to show session details (or directly end session for simplicity)
 function showSessionDetails(sessionId, bayNumber) {
