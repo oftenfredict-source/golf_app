@@ -306,7 +306,7 @@
               </div>
             </div>
             <!-- Member Selection (Searchable) -->
-            <div class="col-12 mb-4" id="memberSelectionDiv">
+            <div class="col-12 mb-4 position-relative" id="memberSelectionDiv">
               <label class="form-label fw-semibold text-body-secondary small text-uppercase mb-1">Find Member</label>
               <div class="input-group border rounded shadow-sm">
                 <span class="input-group-text bg-white border-0"><i class="ri ri-search-2-line text-muted"></i></span>
@@ -316,8 +316,8 @@
                   <i class="ri ri-close-line"></i>
                 </button>
               </div>
-              <div id="memberSearchSuggestions" class="list-group position-absolute shadow-lg border-0 mt-1"
-                style="z-index: 2000; display: none; max-height: 280px; overflow-y: auto; border-radius: 8px; width: calc(100% - 2.5rem);"></div>
+              <div id="memberSearchSuggestions" class="list-group position-absolute shadow-lg border-0 mt-1 bg-white"
+                style="z-index: 2000; display: none; max-height: 280px; overflow-y: auto; border-radius: 8px; width: calc(100% - 2.5rem); left: 1.25rem;"></div>
               <input type="hidden" id="member_id" name="member_id" />
             </div>
             <!-- Guest Information -->
