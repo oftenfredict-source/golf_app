@@ -198,8 +198,8 @@ class MemberController extends Controller
         // Map membership type to card color (only 3 types: STANDARD, VIP, PREMIER)
         $cardColors = [
             'standard' => 'silver',  // STANDARD - Silver Card
-            'vip' => 'black',        // VIP - Black Card
-            'premier' => 'gold',     // PREMIER - Gold Card
+            'vip' => 'gold',         // VIP - Gold Card
+            'premier' => 'black',    // PREMIER - Black Card
         ];
         $cardColor = $membershipType ? ($cardColors[$membershipType] ?? 'silver') : 'gray';
 

@@ -103,8 +103,8 @@
                             <label class="form-label fw-semibold">Membership Type</label>
                             <select class="form-select" name="membership_type">
                                 <option value="standard">Standard (Silver)</option>
-                                <option value="vip">VIP (Black)</option>
-                                <option value="premier">Premier (Gold)</option>
+                                <option value="vip">VIP (Gold)</option>
+                                <option value="premier">Premier (Black)</option>
                             </select>
                         </div>
                         <div class="col-md-6">

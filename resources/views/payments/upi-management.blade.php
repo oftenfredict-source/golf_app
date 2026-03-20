@@ -147,14 +147,14 @@ window.editMember = editMember;
             @endphp
 
             {{-- Membership type distribution --}}
-            <div class="progress mb-4" style="height: 42px; border-radius: 12px; background-color: #f1f3f9;">
+              <div class="progress mb-4" style="height: 42px; border-radius: 12px; background-color: #f1f3f9;">
               <div class="progress-bar bg-label-secondary" role="progressbar" style="width: {{ $stdPct }}%; color: #495057; font-weight: 700;">
                 <span class="fw-bold">{{ $statStd }} Standard</span>
               </div>
-              <div class="progress-bar bg-dark" role="progressbar" style="width: {{ $vipPct }}%">
-                <span class="fw-bold">{{ $statVip }} VIP</span>
+              <div class="progress-bar bg-warning" role="progressbar" style="width: {{ $vipPct }}%">
+                <span class="fw-bold" style="color: #495057;">{{ $statVip }} VIP</span>
               </div>
-              <div class="progress-bar bg-warning" role="progressbar" style="width: {{ $premierPct }}%">
+              <div class="progress-bar bg-dark" role="progressbar" style="width: {{ $premierPct }}%">
                 <span class="fw-bold">{{ $statPremier }} Premier</span>
               </div>
             </div>
@@ -173,15 +173,15 @@ window.editMember = editMember;
                 </div>
               </div>
               <div class="col-6 col-md-3">
-                <div class="p-2 p-md-3 border border-dark rounded h-100" style="background:#f8f8f8;">
-                  <small class="text-muted d-block mb-1 small">VIP</small>
-                  <h4 class="mb-0 fw-bold">{{ number_format($statVip) }}</h4>
+                <div class="p-2 p-md-3 border border-warning rounded h-100" style="background:#fff2cc;">
+                  <small class="text-warning d-block mb-1 small">VIP</small>
+                  <h4 class="mb-0 fw-bold text-warning">{{ number_format($statVip) }}</h4>
                 </div>
               </div>
               <div class="col-6 col-md-3">
-                <div class="p-2 p-md-3 border border-warning rounded bg-warning-subtle text-warning h-100">
-                  <small class="d-block mb-1 small">Premier</small>
-                  <h4 class="mb-0 fw-bold">{{ number_format($statPremier) }}</h4>
+                <div class="p-2 p-md-3 border border-dark rounded bg-dark text-white h-100">
+                  <small class="text-white-50 d-block mb-1 small">Premier</small>
+                  <h4 class="mb-0 fw-bold text-white">{{ number_format($statPremier) }}</h4>
                 </div>
               </div>
             </div>
@@ -402,7 +402,7 @@ window.editMember = editMember;
                 <td class="py-3">
                   <div class="d-flex align-items-center">
                     <div class="avatar avatar-md me-3 flex-shrink-0">
-                      <div class="avatar-initial rounded-circle fw-bold {{ $isVip ? 'bg-dark text-white' : ($isPremier ? 'bg-warning text-dark' : 'bg-label-primary') }}">
+                      <div class="avatar-initial rounded-circle fw-bold {{ $isVip ? 'bg-warning text-dark' : ($isPremier ? 'bg-dark text-white' : 'bg-label-primary') }}">
                         {{ strtoupper(substr($member->name, 0, 2)) }}
                       </div>
                     </div>
@@ -411,9 +411,9 @@ window.editMember = editMember;
                       <div class="d-flex align-items-center gap-2 flex-wrap mt-1">
                         @if($member->has_full_access)
                           @if($isVip)
-                            <span class="badge bg-dark" style="font-size:10px;"><i class="ri ri-vip-crown-2-line"></i> VIP</span>
+                            <span class="badge bg-warning text-dark" style="font-size:10px;"><i class="ri ri-vip-crown-2-line"></i> VIP</span>
                           @elseif($isPremier)
-                            <span class="badge bg-warning text-dark" style="font-size:10px;"><i class="ri ri-vip-diamond-line"></i> PREMIER</span>
+                            <span class="badge bg-dark" style="font-size:10px;"><i class="ri ri-vip-diamond-line"></i> PREMIER</span>
                           @else
                             <span class="badge bg-label-secondary" style="font-size:10px;">STANDARD</span>
                           @endif
@@ -640,8 +640,8 @@ window.editMember = editMember;
               <div class="form-floating form-floating-outline">
                 <select class="form-select" id="new_membership_type" name="membership_type">
                   <option value="standard">STANDARD (Silver Card)</option>
-                  <option value="vip">VIP (Black Card)</option>
-                  <option value="premier">PREMIER (Gold Card)</option>
+                  <option value="vip">VIP (Gold Card)</option>
+                  <option value="premier">PREMIER (Black Card)</option>
                 </select>
                 <label>Membership Type</label>
               </div>
@@ -857,8 +857,8 @@ window.editMember = editMember;
               <div class="form-floating form-floating-outline">
                 <select class="form-select" id="edit_membership_type" name="membership_type">
                   <option value="standard">STANDARD</option>
-                  <option value="vip">VIP</option>
-                  <option value="premier">PREMIER</option>
+                  <option value="vip">VIP (Gold)</option>
+                  <option value="premier">PREMIER (Black)</option>
                 </select>
                 <label>Membership Type</label>
               </div>
@@ -1094,12 +1094,12 @@ document.addEventListener('DOMContentLoaded', function() {
   margin-top: 3px;
   opacity: .8;
 }
-/* VIP — dark card */
-.mc-vip { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: #fff; }
-.mc-vip .mc-dots span { background: #ffd700; }
-/* Premier — gold card */
-.mc-premier { background: linear-gradient(135deg, #b8860b 0%, #daa520 100%); color: #fff; }
-.mc-premier .mc-dots span { background: rgba(255,255,255,.8); }
+/* VIP — gold card */
+.mc-vip { background: linear-gradient(135deg, #b8860b 0%, #daa520 100%); color: #fff; }
+.mc-vip .mc-dots span { background: rgba(255,255,255,.8); }
+/* Premier — dark card */
+.mc-premier { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: #fff; }
+.mc-premier .mc-dots span { background: #ffd700; }
 /* Standard — silver card */
 .mc-standard { background: linear-gradient(135deg, #6c757d 0%, #adb5bd 100%); color: #fff; }
 .mc-standard .mc-dots span { background: rgba(255,255,255,.7); }
