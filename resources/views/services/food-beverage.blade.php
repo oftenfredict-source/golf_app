@@ -75,6 +75,12 @@
           </div>
 
           {{-- Right: Revenue summary --}}
+          @php
+            $revenueTarget = 1000000; // Example target for visual
+            $revPct = $revenueTarget > 0 ? min(100, (($stats['revenue_today'] ?? 0) / $revenueTarget) * 100) : 0;
+            $completedOrders = \App\Models\Order::whereDate('created_at', today())->whereIn('status',['complete','completed'])->count();
+            $ordersPct = $totalToday > 0 ? ($completedOrders / $totalToday) * 100 : 0;
+          @endphp
           <div class="col-md-4 bg-primary text-white p-4">
             <h5 class="text-white fw-bold mb-4">Today's Revenue Summary</h5>
             <div class="mb-4">
@@ -82,17 +88,17 @@
                 <span>F&B Revenue</span>
                 <strong>TZS {{ number_format($stats['revenue_today'] ?? 0) }}</strong>
               </div>
-              <div class="progress" style="height: 6px;">
-                <div class="progress-bar bg-white" style="width: 80%"></div>
+              <div class="progress" style="height: 6px; background-color: rgba(255,255,255,0.2);">
+                <div class="progress-bar bg-white" style="width: {{ $revPct }}%"></div>
               </div>
             </div>
             <div class="mb-4">
               <div class="d-flex justify-content-between mb-1">
                 <span>Orders Completed</span>
-                <strong>{{ \App\Models\Order::whereDate('created_at', today())->whereIn('status',['complete','completed'])->count() }}</strong>
+                <strong>{{ $completedOrders }}</strong>
               </div>
-              <div class="progress" style="height: 6px;">
-                <div class="progress-bar bg-info" style="width: 60%"></div>
+              <div class="progress" style="height: 6px; background-color: rgba(255,255,255,0.2);">
+                <div class="progress-bar bg-info" style="width: {{ $ordersPct }}%"></div>
               </div>
             </div>
             <div class="pt-2">
