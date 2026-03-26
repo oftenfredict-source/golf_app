@@ -266,15 +266,20 @@ class FoodBeverageController extends Controller
                 'notes' => $request->notes,
             ]);
 
+            // Create items for the new order
+            foreach ($orderItems as $item) {
+                $order->items()->create($item);
+            }
+
             $msgPart = "created for {$member->name}: Order #{$order->order_number}";
             $actionWord = "created";
         }
 
         // Deduct stock for each item immediately
-        foreach (($existingOrder ? $orderItems : $order->items) as $item) {
-            $menuItem = \App\Models\MenuItem::find($item['menu_item_id'] ?? $item->menu_item_id);
+        foreach ($orderItems as $item) {
+            $menuItem = \App\Models\MenuItem::find($item['menu_item_id']);
             if ($menuItem) {
-                $menuItem->decrement('stock_quantity', $item['quantity'] ?? $item->quantity);
+                $menuItem->decrement('stock_quantity', $item['quantity']);
             }
         }
 

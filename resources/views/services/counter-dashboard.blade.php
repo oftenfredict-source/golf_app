@@ -131,9 +131,15 @@
                                                 <button class="btn btn-outline-primary" onclick="viewOrder({{ $order->id }})">
                                                     <i class="ri ri-eye-line me-1"></i> Details
                                                 </button>
-                                                <button class="btn btn-success px-4" onclick="readyOrder({{ $order->id }}, '{{ $order->order_number }}')">
-                                                    <i class="ri ri-check-double-line me-1"></i> MARK READY
-                                                </button>
+                                                @if($order->status === 'ready')
+                                                    <button class="btn btn-primary px-4" onclick="updateOrderStatus({{ $order->id }}, '{{ $order->order_number }}', 'served')">
+                                                        <i class="ri ri-hand-coin-line me-1"></i> MARK SERVED
+                                                    </button>
+                                                @else
+                                                    <button class="btn btn-success px-4" onclick="updateOrderStatus({{ $order->id }}, '{{ $order->order_number }}', 'ready')">
+                                                        <i class="ri ri-check-double-line me-1"></i> MARK READY
+                                                    </button>
+                                                @endif
                                             </div>
                                         </div>
                                     </div>
@@ -252,8 +258,13 @@
                                 @foreach($cat->items as $item)
                                     <div class="col-md-6 menu-card" data-category-id="{{ $cat->id }}">
                                         <div class="card h-100 border-0 shadow-none border-dashed p-3 cursor-pointer item-select" 
+                                             id="item-card-{{ $item->id }}"
                                              onclick="addToCart({{ $item->id }}, '{{ addslashes($item->name) }}', {{ $item->price }})"
                                              style="transition: all 0.2s;">
+                                            <div class="selected-check" onclick="event.stopPropagation(); removeFromCart({{ $item->id }})" title="Unmark item">
+                                                <i class="ri-check-line"></i>
+                                            </div>
+                                            <div class="quantity-badge" id="item-qty-{{ $item->id }}">1</div>
                                             <div class="d-flex justify-content-between align-items-start mb-2">
                                                 <h6 class="fw-bold mb-0 text-wrap">{{ $item->name }}</h6>
                                                 <span class="badge bg-label-primary px-2">TZS {{ number_format($item->price) }}</span>
@@ -367,10 +378,13 @@
                                         </td>
                                          <td class="text-end">
                                              <div class="d-flex justify-content-end gap-2">
-                                                 <button class="btn btn-sm btn-outline-warning" onclick="quickPriceAdjust({{ $item->id }}, '{{ addslashes($item->name) }}', {{ $item->price }})">
-                                                     <i class="ri ri-price-tag-3-line me-1"></i> Price
+                                                 <button class="btn btn-sm btn-outline-warning" onclick="editItemDetails({{ $item->id }}, '{{ addslashes($item->name) }}', {{ $item->price }})">
+                                                     <i class="ri ri-edit-line me-1"></i> Edit Item
                                                  </button>
-                                                 <button class="btn btn-sm btn-primary" onclick="quickAdjustStock({{ $item->id }}, '{{ addslashes($item->name) }}', {{ $item->stock_quantity }})">
+                                                 <button class="btn btn-sm btn-outline-info" onclick="quickAdjustStock({{ $item->id }}, '{{ addslashes($item->name) }}', {{ $item->stock_quantity }}, 'set')">
+                                                     <i class="ri ri-edit-box-line me-1"></i> Edit Stock
+                                                 </button>
+                                                 <button class="btn btn-sm btn-primary" onclick="quickAdjustStock({{ $item->id }}, '{{ addslashes($item->name) }}', {{ $item->stock_quantity }}, 'add')">
                                                      <i class="ri ri-add-line me-1"></i> Add Stock
                                                  </button>
                                              </div>
@@ -397,9 +411,13 @@
             <form id="quickAdjustForm" onsubmit="submitQuickAdjust(event)">
                 <div class="modal-body p-4 pt-0">
                     <input type="hidden" id="quick_adjust_id">
+                    <input type="hidden" id="quick_adjust_type" value="add">
                     <div class="mb-3">
-                        <label class="form-label">Quantity to Add</label>
+                        <label class="form-label fw-bold" id="quickAdjustLabel">Quantity to Add</label>
                         <input type="number" class="form-control form-control-lg text-center fw-bold" id="quick_adjust_qty" required min="1" value="1">
+                        <div class="alert alert-info py-2 small mt-2" id="quickAdjustNote">
+                            Note: This will add to the current stock.
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer border-0 p-4 pt-0">
@@ -410,25 +428,29 @@
         </div>
     </div>
 </div>
-<!-- Quick Price Modal -->
-<div class="modal fade" id="quickPriceModal" tabindex="-1" aria-hidden="true">
+<!-- Edit Item Modal (Name & Price) -->
+<div class="modal fade" id="editItemModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-sm modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
             <div class="modal-header border-0 p-4">
-                <h5 class="modal-title fw-bold" id="quickPriceTitle">Update Price</h5>
+                <h5 class="modal-title fw-bold" id="editItemTitle">Edit Item Details</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <form id="quickPriceForm" onsubmit="submitPriceUpdate(event)">
+            <form id="editItemForm" onsubmit="submitEditItem(event)">
                 <div class="modal-body p-4 pt-0">
-                    <input type="hidden" id="quick_price_id">
+                    <input type="hidden" id="edit_item_id">
                     <div class="mb-3">
-                        <label class="form-label">New Price (TZS)</label>
-                        <input type="number" class="form-control form-control-lg text-center fw-bold text-primary" id="quick_price_val" required min="0">
+                        <label class="form-label fw-bold">Item Name</label>
+                        <input type="text" class="form-control form-control-lg" id="edit_item_name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Unit Price (TZS)</label>
+                        <input type="number" class="form-control form-control-lg text-center fw-bold text-primary" id="edit_item_price" required min="0">
                     </div>
                 </div>
                 <div class="modal-footer border-0 p-4 pt-0">
                     <button type="button" class="btn btn-label-secondary w-100" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-warning w-100 py-2 fw-bold" id="btnSubmitPrice">UPDATE PRICE</button>
+                    <button type="submit" class="btn btn-warning w-100 py-2 fw-bold" id="btnSubmitEditItem">SAVE CHANGES</button>
                 </div>
             </form>
         </div>
@@ -439,24 +461,27 @@
 
 @push('scripts')
 <script>
-    function readyOrder(orderId, orderNumber) {
-        showConfirm('Are you sure you want to mark order #' + orderNumber + ' as ready for pickup?').then((result) => {
+    function updateOrderStatus(orderId, orderNumber, newStatus) {
+        let confirmMsg = 'Are you sure you want to mark order #' + orderNumber + ' as ' + newStatus + '?';
+        if (newStatus === 'served') confirmMsg = 'Confirm order #' + orderNumber + ' has been picked up/served?';
+
+        showConfirm(confirmMsg).then((result) => {
             if (result.isConfirmed) {
-                fetch('{{ url("services/orders") }}/' + orderId + '/status', {
+                fetch('{{ url("services/orders", [], false) }}/' + orderId + '/status', {
                     method: 'POST',
                     headers: {
                         'X-CSRF-TOKEN': '{{ csrf_token() }}',
                         'Content-Type': 'application/json',
                         'Accept': 'application/json'
                     },
-                    body: JSON.stringify({ status: 'ready' })
+                    body: JSON.stringify({ status: newStatus })
                 })
                 .then(r => r.json())
                 .then(data => {
                     if (data.success) {
-                        showSuccess('Order marked as ready').then(() => location.reload());
+                        showSuccess('Order ' + newStatus + '!').then(() => location.reload());
                     } else {
-                        showError(data.message || 'Failed to update order');
+                        showError(data.message || 'Error updating status');
                     }
                 })
                 .catch(err => showError('Error: ' + err.message));
@@ -469,7 +494,7 @@
         content.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary"></div></div>';
         new bootstrap.Modal(document.getElementById('orderDetailsModal')).show();
         
-        fetch('{{ url("services/orders") }}/' + orderId, {
+        fetch('{{ url("services/orders", [], false) }}/' + orderId, {
             headers: { 'Accept': 'application/json' }
         })
         .then(r => r.json())
@@ -556,7 +581,7 @@
             return;
         }
 
-        fetch('{{ url("payments/members/search") }}?tier=1&q=' + encodeURIComponent(q), {
+        fetch('{{ url("payments/members/search", [], false) }}?tier=1&q=' + encodeURIComponent(q), {
             headers: { 'Accept': 'application/json' }
         })
         .then(r => r.json())
@@ -680,6 +705,17 @@
 
         totalBox.textContent = 'TZS ' + number_format(total);
         
+        // Update Catalog Visual State (Marking/Unmarking/Quantity)
+        document.querySelectorAll('.menu-card .card').forEach(card => card.classList.remove('selected'));
+        cart.forEach(item => {
+            const card = document.getElementById('item-card-' + item.id);
+            if (card) {
+                card.classList.add('selected');
+                const qBadge = document.getElementById('item-qty-' + item.id);
+                if (qBadge) qBadge.textContent = item.quantity;
+            }
+        });
+
         // Validation
         const insufficient = selectedMember && selectedMember.balance < total;
         document.getElementById('insufficientBalanceAlert').classList.toggle('d-none', !insufficient);
@@ -702,7 +738,7 @@
             total_amount: cart.reduce((sum, i) => sum + (i.price * i.quantity), 0)
         };
 
-        fetch('{{ route("services.orders.store") }}', {
+        fetch('{{ route("services.orders.store", [], false) }}', {
             method: 'POST',
             headers: {
                 'X-CSRF-TOKEN': '{{ csrf_token() }}',
@@ -751,7 +787,7 @@
         btn.disabled = true;
         btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Creating...';
 
-        fetch('{{ route("services.menu-items.store") }}', {
+        fetch('{{ route("services.menu-items.store", [], false) }}', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -788,10 +824,25 @@
         stockModal.show();
     }
 
-    function quickAdjustStock(id, name, currentStock) {
+    function quickAdjustStock(id, name, currentStock, type = 'add') {
         if (!quickAdjustModal) quickAdjustModal = new bootstrap.Modal(document.getElementById('quickAdjustModal'));
         document.getElementById('quick_adjust_id').value = id;
-        document.getElementById('quickAdjustTitle').textContent = 'Add Stock: ' + name;
+        document.getElementById('quick_adjust_type').value = type;
+        
+        if (type === 'set') {
+            document.getElementById('quickAdjustTitle').innerHTML = '<i class="ri-edit-box-line me-2"></i>Edit Stock: ' + name;
+            document.getElementById('quickAdjustLabel').textContent = 'New Absolute Stock Level';
+            document.getElementById('quick_adjust_qty').placeholder = 'Current: ' + currentStock;
+            document.getElementById('quickAdjustNote').textContent = 'Note: This will set the stock to EXACTLY this number.';
+            document.getElementById('btnSubmitAdjust').textContent = 'SAVE NEW STOCK LEVEL';
+        } else {
+            document.getElementById('quickAdjustTitle').innerHTML = '<i class="ri-add-line me-2"></i>Add Stock: ' + name;
+            document.getElementById('quickAdjustLabel').textContent = 'Quantity to Add';
+            document.getElementById('quick_adjust_qty').placeholder = 'Enter quantity to add';
+            document.getElementById('quickAdjustNote').textContent = 'Note: This will add to the current stock.';
+            document.getElementById('btnSubmitAdjust').textContent = 'ADD TO STOCK';
+        }
+        
         document.getElementById('quick_adjust_qty').value = '';
         quickAdjustModal.show();
     }
@@ -800,12 +851,13 @@
         e.preventDefault();
         const id = document.getElementById('quick_adjust_id').value;
         const qty = document.getElementById('quick_adjust_qty').value;
+        const type = document.getElementById('quick_adjust_type').value;
         const btn = document.getElementById('btnSubmitAdjust');
         
         btn.disabled = true;
         btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Updating...';
 
-        fetch('{{ url("inventory/menu-items") }}/' + id + '/adjust', {
+        fetch('{{ url("inventory/menu-items", [], false) }}/' + id + '/adjust', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -813,7 +865,7 @@
                 'Accept': 'application/json'
             },
             body: JSON.stringify({
-                type: 'add',
+                type: type,
                 quantity: qty
             })
         })
@@ -836,28 +888,27 @@
         });
     }
 
-    // --- Price Update Logic ---
-    let quickPriceModal;
-
-    function quickPriceAdjust(id, name, currentPrice) {
-        if (!quickPriceModal) quickPriceModal = new bootstrap.Modal(document.getElementById('quickPriceModal'));
-        document.getElementById('quick_price_id').value = id;
-        document.getElementById('quickPriceTitle').textContent = 'Update Price: ' + name;
-        document.getElementById('quick_price_val').value = currentPrice;
-        quickPriceModal.show();
+    // --- Item Details Logic ---
+    let editItemModal;
+    function editItemDetails(id, name, currentPrice) {
+        if (!editItemModal) editItemModal = new bootstrap.Modal(document.getElementById('editItemModal'));
+        document.getElementById('edit_item_id').value = id;
+        document.getElementById('edit_item_name').value = name;
+        document.getElementById('edit_item_price').value = currentPrice;
+        editItemModal.show();
     }
 
-    function submitPriceUpdate(e) {
+    function submitEditItem(e) {
         e.preventDefault();
-        const id = document.getElementById('quick_price_id').value;
-        const price = document.getElementById('quick_price_val').value;
-        const btn = document.getElementById('btnSubmitPrice');
+        const id = document.getElementById('edit_item_id').value;
+        const name = document.getElementById('edit_item_name').value;
+        const price = document.getElementById('edit_item_price').value;
+        const btn = document.getElementById('btnSubmitEditItem');
         
         btn.disabled = true;
         btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Updating...';
 
-        // Using POST with _method: PUT for better compatibility with server environments
-        fetch('{{ url("services/menu-items") }}/' + id, {
+        fetch('{{ url("services/menu-items", [], false) }}/' + id, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -866,6 +917,7 @@
             },
             body: JSON.stringify({
                 _method: 'PUT',
+                name: name,
                 price: price
             })
         })
@@ -882,19 +934,17 @@
         })
         .then(data => {
             if (data.success) {
-                showSuccess('Price updated successfully').then(() => {
-                    location.reload();
-                });
+                showSuccess('Item updated successfully').then(() => location.reload());
             } else {
-                showError(data.message || 'Failed to update price');
+                showError(data.message || 'Failed to update item');
                 btn.disabled = false;
-                btn.innerHTML = 'UPDATE PRICE';
+                btn.innerHTML = 'SAVE CHANGES';
             }
         })
         .catch(err => {
             showError('Error: ' + err.message);
             btn.disabled = false;
-            btn.innerHTML = 'UPDATE PRICE';
+            btn.innerHTML = 'SAVE CHANGES';
         });
     }
 </script>
@@ -911,12 +961,14 @@
     .badge.bg-label-warning { background-color: #fff2d6 !important; color: #ffab00 !important; }
     .badge.bg-label-danger { background-color: #ffe5e5 !important; color: #ff3e1d !important; }
 
-    .menu-card .card:hover {
-        border-color: #696cff !important;
-        background-color: #f8f9ff !important;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(105, 108, 255, 0.1);
-    }
+    .menu-card .card:hover { border-color: #696cff !important; background-color: #f8f9ff !important; transform: translateY(-2px); box-shadow: 0 4px 8px rgba(105, 108, 255, 0.1); }
+    .menu-card .card.selected { border: 2px solid #696cff !important; background-color: #f0f2ff !important; position: relative; }
+    .menu-card .card .selected-check { display: none; position: absolute; top: -10px; right: -10px; background: #696cff; color: white; border-radius: 50%; width: 28px; height: 28px; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.2); z-index: 10; cursor: pointer; transition: transform 0.2s; }
+    .menu-card .card .selected-check:hover { transform: scale(1.1); background: #ff3e1d; }
+    .menu-card .card .selected-check:hover i::before { content: "\f00d"; font-family: "remixicon"; } /* Change check to X on hover */
+    .menu-card .card.selected .selected-check { display: flex; }
+    .menu-card .card .quantity-badge { display: none; position: absolute; bottom: 10px; right: 10px; background: #696cff; color: white; border-radius: 4px; padding: 2px 8px; font-size: 0.75rem; font-weight: bold; z-index: 5; }
+    .menu-card .card.selected .quantity-badge { display: block; }
     .item-select {
         cursor: pointer;
         user-select: none;
