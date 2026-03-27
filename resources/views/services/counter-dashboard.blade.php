@@ -266,6 +266,9 @@
                                             <div class="selected-check" onclick="event.stopPropagation(); removeFromCart({{ $item->id }})" title="Unmark item">
                                                 <i class="ri-check-line"></i>
                                             </div>
+                                            <div class="minus-badge" onclick="event.stopPropagation(); changeQuantity({{ $item->id }}, -1)" title="Reduce quantity">
+                                                <i class="ri-subtract-line"></i>
+                                            </div>
                                             <div class="quantity-badge" id="item-qty-{{ $item->id }}">1</div>
                                             <div class="d-flex justify-content-between align-items-start mb-2">
                                                 <h6 class="fw-bold mb-0 text-wrap">{{ $item->name }}</h6>
@@ -689,9 +692,11 @@
                     <div class="flex-grow-1">
                         <div class="fw-bold text-truncate" style="max-width: 150px;">${item.name}</div>
                         <div class="d-flex align-items-center mt-1">
-                            <button class="btn btn-xs btn-outline-secondary px-2 py-0" onclick="changeQuantity(${item.id}, -1)">-</button>
-                            <span class="mx-2 fw-bold text-primary">${item.quantity}</span>
-                            <button class="btn btn-xs btn-outline-secondary px-2 py-0" onclick="changeQuantity(${item.id}, 1)">+</button>
+                            <div class="btn-group btn-group-sm mb-0">
+                                <button class="btn btn-outline-primary py-0 px-2" onclick="changeQuantity(${item.id}, -1)"><i class="ri-subtract-line"></i></button>
+                                <button class="btn btn-outline-primary py-0 px-2 fw-bold disabled" style="min-width: 35px; opacity: 1; color: #696cff !important; background: transparent !important;">${item.quantity}</button>
+                                <button class="btn btn-outline-primary py-0 px-2" onclick="changeQuantity(${item.id}, 1)"><i class="ri-add-line"></i></button>
+                            </div>
                             <span class="ms-2 text-muted small">@ TZS ${number_format(item.price)}</span>
                         </div>
                     </div>
@@ -983,5 +988,35 @@
     }
     .bg-light-subtle {
         background-color: #fbfcfe !important;
+    }
+    .btn-xs {
+        padding: 0.15rem 0.4rem;
+        font-size: 0.7rem;
+        line-height: 1;
+        border-radius: 0.2rem;
+    }
+    .menu-card .card .minus-badge {
+        display: none;
+        position: absolute;
+        bottom: 10px;
+        right: 45px; /* Positioned to the left of quantity badge */
+        background: #ff3e1d;
+        color: white;
+        border-radius: 4px;
+        width: 24px;
+        height: 24px;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        z-index: 5;
+        cursor: pointer;
+        transition: transform 0.1s;
+    }
+    .menu-card .card .minus-badge:hover {
+        transform: scale(1.1);
+        background: #e6381a;
+    }
+    .menu-card .card.selected .minus-badge {
+        display: flex;
     }
 </style>
