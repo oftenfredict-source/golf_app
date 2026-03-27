@@ -586,7 +586,7 @@
             return;
         }
 
-        fetch('{{ url("payments/members/search", [], false) }}?tier=1&q=' + encodeURIComponent(q), {
+        fetch('{{ url("payments/members/search", [], false) }}?q=' + encodeURIComponent(q), {
             headers: { 'Accept': 'application/json' }
         })
         .then(r => r.json())
