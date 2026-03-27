@@ -472,7 +472,7 @@
 
         showConfirm(confirmMsg).then((result) => {
             if (result.isConfirmed) {
-                fetch('{{ url("services/orders", [], false) }}/' + orderId + '/status', {
+                fetch('{{ url("services/orders") }}/' + orderId + '/status', {
                     method: 'POST',
                     headers: {
                         'X-CSRF-TOKEN': '{{ csrf_token() }}',
@@ -499,7 +499,7 @@
         content.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary"></div></div>';
         new bootstrap.Modal(document.getElementById('orderDetailsModal')).show();
         
-        fetch('{{ url("services/orders", [], false) }}/' + orderId, {
+        fetch('{{ url("services/orders") }}/' + orderId, {
             headers: { 'Accept': 'application/json' }
         })
         .then(r => r.json())
@@ -586,7 +586,7 @@
             return;
         }
 
-        fetch('{{ url("payments/members/search", [], false) }}?q=' + encodeURIComponent(q), {
+        fetch('{{ url("payments/members/search") }}?q=' + encodeURIComponent(q), {
             headers: { 'Accept': 'application/json' }
         })
         .then(r => r.json())
@@ -745,7 +745,7 @@
             total_amount: cart.reduce((sum, i) => sum + (i.price * i.quantity), 0)
         };
 
-        fetch('{{ route("services.orders.store", [], false) }}', {
+        fetch('{{ route("services.orders.store") }}', {
             method: 'POST',
             headers: {
                 'X-CSRF-TOKEN': '{{ csrf_token() }}',
@@ -794,7 +794,7 @@
         btn.disabled = true;
         btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Creating...';
 
-        fetch('{{ route("services.menu-items.store", [], false) }}', {
+        fetch('{{ route("services.menu-items.store") }}', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -864,7 +864,7 @@
         btn.disabled = true;
         btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Updating...';
 
-        fetch('{{ url("inventory/menu-items", [], false) }}/' + id + '/adjust', {
+        fetch('{{ url("inventory/menu-items") }}/' + id + '/adjust', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -915,7 +915,7 @@
         btn.disabled = true;
         btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Updating...';
 
-        fetch('{{ url("services/menu-items", [], false) }}/' + id, {
+        fetch('{{ url("services/menu-items") }}/' + id, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
