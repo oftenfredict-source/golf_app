@@ -198,11 +198,13 @@
                 <div class="col-md-5 border-end d-flex flex-column p-3 p-md-4 overflow-auto" style="max-height: 50vh; max-height: md-none;">
                     <div class="mb-4">
                         <label class="form-label fw-bold">1. Select Member</label>
-                        <div class="input-group input-group-merge">
-                            <span class="input-group-text"><i class="ri ri-search-line"></i></span>
-                            <input type="text" class="form-control" id="pos_member_search" placeholder="Name, Phone or Card No." autocomplete="off">
+                        <div class="position-relative">
+                            <div class="input-group input-group-merge">
+                                <span class="input-group-text"><i class="ri ri-search-line"></i></span>
+                                <input type="text" class="form-control" id="pos_member_search" placeholder="Name, Phone or Card No." autocomplete="off">
+                            </div>
+                            <div id="posMemberSuggestions" class="list-group mt-1 shadow-lg position-absolute w-100 d-none bg-white border rounded-3" style="max-height: 250px; overflow-y: auto; z-index: 1060; top: 100%;"></div>
                         </div>
-                        <div id="posMemberSuggestions" class="list-group mt-2 shadow-sm position-absolute z-index-2 w-100 d-none" style="max-height: 200px; overflow-y: auto;"></div>
                     </div>
 
                     <div id="selectedMemberInfo" class="p-3 rounded-3 bg-light mb-4 d-none border border-primary border-dashed">
